@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd client && npm install && npm run build",
+  "version": 2,
+  "buildCommand": "cd client && npm install && npm run build && cd ../api && npm install",
   "outputDirectory": "client/dist",
   "framework": "vite",
   "rewrites": [
@@ -11,5 +12,20 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-webflow-token" }
+      ]
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PRODUCTION_MODE": "true"
+  }
 } 
