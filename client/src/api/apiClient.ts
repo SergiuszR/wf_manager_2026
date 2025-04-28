@@ -42,12 +42,17 @@ export const webflowAPI = {
     return apiClient.get(`/webflow/assets/${assetId}`, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined);
   },
   uploadAsset: (siteId: string, formData: FormData, webflowToken?: string) => {
-    return apiClient.post(`/webflow/sites/${siteId}/assets`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        ...(webflowToken ? { 'x-webflow-token': webflowToken } : {})
-      },
-    });
+    return apiClient.post(
+      `/webflow/sites/${siteId}/assets`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Accept': 'application/json',
+          ...(webflowToken ? { 'x-webflow-token': webflowToken } : {})
+        },
+      }
+    );
   },
   downloadAssetsCSV: (siteId: string) => {
     return `${apiClient.defaults.baseURL}/webflow/sites/${siteId}/assets/csv`;
@@ -56,9 +61,31 @@ export const webflowAPI = {
     return apiClient.get(`/webflow/sites/${siteId}/assets/csv`, { responseType: 'blob', ...(webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : {}) });
   },
   getCollectionItems: (collectionId: string, webflowToken?: string) => apiClient.get(`/webflow/collections/${collectionId}/items`, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined),
+  getCollectionItem: (collectionId: string, itemId: string, webflowToken?: string) => 
+    apiClient.get(`/webflow/collections/${collectionId}/items/${itemId}`, 
+    webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined),
+  updateCollectionItem: (
+    collectionId: string, 
+    itemId: string, 
+    data: { 
+      fieldData: any; 
+      isDraft?: boolean; 
+      isArchived?: boolean;
+      cmsLocaleId?: string;
+    }, 
+    webflowToken?: string
+  ) => apiClient.patch(
+    `/webflow/collections/${collectionId}/items/${itemId}`, 
+    data, 
+    webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined
+  ),
   getPageCustomCode: (pageId: string, webflowToken?: string) => apiClient.get(`/webflow/pages/${pageId}/custom-code`, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined),
-  updateAssetAltText: (assetId: string, altText: string, webflowToken?: string) => {
-    return apiClient.patch(`/webflow/assets/${assetId}`, { altText }, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined);
+  updateAssetAltText: (assetId: string, altText: string, webflowToken?: string, displayName?: string) => {
+    const requestBody: { altText?: string; displayName?: string } = {};
+    if (altText !== undefined) requestBody.altText = altText;
+    if (displayName !== undefined) requestBody.displayName = displayName;
+    
+    return apiClient.patch(`/webflow/assets/${assetId}`, requestBody, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined);
   },
   createAssetMetadata: (siteId: string, fileName: string, fileHash: string, webflowToken?: string) => {
     return apiClient.post(`/webflow/sites/${siteId}/assets`, { fileName, fileHash }, webflowToken ? { headers: { 'x-webflow-token': webflowToken } } : undefined);

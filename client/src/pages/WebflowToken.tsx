@@ -13,9 +13,11 @@ const WebflowToken: React.FC = () => {
 
   useEffect(() => {
     // Check token status if user has a token
-    if (user && user.webflowToken) {
-      validateToken();
-    }
+    // if (user && user.webflowToken) {
+    //   validateToken();
+    // }
+    // Instead, validate if a token exists in backend/local state
+    validateToken();
   }, [user]);
 
   const validateToken = async () => {
@@ -67,7 +69,7 @@ const WebflowToken: React.FC = () => {
         </PageDescription>
       </PageHeader>
       
-      {user && user.webflowToken && (
+      {/* {user && user.webflowToken && (
         <StatusCard status={tokenStatus}>
           <StatusTitle>Token Status</StatusTitle>
           <StatusMessage>
@@ -77,7 +79,17 @@ const WebflowToken: React.FC = () => {
               'Token status unknown'}
           </StatusMessage>
         </StatusCard>
-      )}
+      )} */}
+      {/* Always show status card for now */}
+      <StatusCard status={tokenStatus}>
+        <StatusTitle>Token Status</StatusTitle>
+        <StatusMessage>
+          {loading ? 'Validating token...' : 
+            tokenStatus === 'valid' ? 'Your Webflow token is valid and active' :
+            tokenStatus === 'invalid' ? 'Your Webflow token is invalid or expired' :
+            'Token status unknown'}
+        </StatusMessage>
+      </StatusCard>
       
       <FormCard>
         <FormTitle>Update Webflow Token</FormTitle>

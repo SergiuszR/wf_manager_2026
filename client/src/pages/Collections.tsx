@@ -5,47 +5,14 @@ import { webflowAPI } from '../api/apiClient';
 import { Project } from './Dashboard';
 import { supabase } from '../lib/supabaseClient';
 import { useProjectContext } from '../contexts/ProjectContext';
-
-interface WebflowCollection {
-  id: string;
-  name: string;
-  slug: string;
-  itemCount: number;
-  lastUpdated: string;
-  siteName?: string;
-  siteId?: string;
-  designerUrl?: string;
-  createdOn?: string;
-  stagedItemCount?: number;
-  liveItemCount?: number;
-  displayName?: string;
-}
-
-interface ModalState {
-  isOpen: boolean;
-  collection: WebflowCollection | null;
-  collectionDetails: any | null;
-  error?: string;
-}
-
-interface DropdownState {
-  isOpen: boolean;
-  collectionId: string | null;
-}
-
-interface ItemCountsProps {
-  $compact?: boolean;
-}
-
-interface ItemCountBadgeProps {
-  $small?: boolean;
-  $live?: boolean;
-  $draft?: boolean;
-}
-
-interface ItemCountLabelProps {
-  $small?: boolean;
-}
+import { 
+  WebflowCollection, 
+  ModalState, 
+  DropdownState, 
+  ItemCountsProps, 
+  ItemCountBadgeProps, 
+  ItemCountLabelProps 
+} from '../types/webflow';
 
 const Collections: React.FC = () => {
   const { token, user } = useAuth();

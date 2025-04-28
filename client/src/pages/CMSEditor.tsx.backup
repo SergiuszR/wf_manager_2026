@@ -296,7 +296,7 @@ const EditModalContent = styled.div`
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   width: 90%;
-  max-width: 1240px;
+  max-width: 1200px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -679,45 +679,36 @@ const ItemDetailTable = styled.table`
 
 // Create a component for editable item detail row
 const ItemDetailRow = styled.tr`
-  td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
-    background: transparent;
-    transition: background 0.2s;
-    position: relative;
+  &:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02);
   }
-  &:hover td {
-    background: var(--hover-color);
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
   }
-  &.editing td {
-    background: var(--primary-color-light, #e6f0fa);
-    border-left: 4px solid var(--primary-color);
-  }
+  
+  transition: background-color 0.2s;
 `;
 
 // Create a component for editable item detail label
 const ItemDetailLabel = styled.td`
-  flex: 1 1 30%;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 1rem;
-  align-items: center;
-  display: flex;
-  gap: 0.5rem;
+  width: 30%;
+  vertical-align: top;
 `;
 
 // Create a component for editable item detail value
 const ItemDetailValue = styled.td`
-  flex: 2 1 60%;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 1rem;
-  align-items: center;
-  display: flex;
-  gap: 1rem;
+  vertical-align: top;
   word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 300px;
 `;
 
 // Create a component for editable item status badge
@@ -739,38 +730,28 @@ const ItemStatusBadge = styled.span<{ $status: string }>`
 // Create a component for editable image field container
 const ImageFieldContainer = styled.div`
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.2rem 0;
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+  align-items: flex-start;
+  gap: 1rem;
+  background-color: var(--background-main);
+  border-radius: 8px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
 `;
 
+// Create a component for editable image thumbnail
 const ImageThumbnail = styled.img`
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
   object-fit: cover;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  border: 2.5px solid #f3f4f6;
-  background: #fff;
-  transition: box-shadow 0.18s, transform 0.18s;
-  &:hover {
-    box-shadow: 0 4px 16px rgba(99,102,241,0.13);
-    transform: scale(1.04);
-  }
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 `;
 
+// Create a component for editable image details
 const ImageDetails = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  color: #444;
-  font-size: 1.02rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  gap: 0.5rem;
 `;
 
 // Create a component for editable item detail modal content
@@ -821,7 +802,6 @@ const CloseButton = styled.button`
   padding: 0.25rem;
   line-height: 1;
   transition: color 0.2s;
-  width: 1.25rem;
   
   &:hover {
     color: var(--text-primary);
@@ -980,22 +960,19 @@ const EditToggle = styled.input`
 
 // Create a component for editable text field
 const EditTextField = styled.input`
-  padding: 0.45rem 0.8rem;
-  border: 1.5px solid var(--border-color, #d1d5db);
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #ccc);
   border-radius: 8px;
-  background: #f8fafc;
+  background-color: var(--background-main, #fff);
   color: var(--text-primary, #222);
-  font-size: 0.97rem;
+  font-size: 1rem;
   width: 100%;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.5rem;
   box-sizing: border-box;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03) inset;
-  transition: border-color 0.18s, box-shadow 0.18s;
   &:focus {
     outline: none;
-    border-color: var(--primary-color, #6366f1);
-    box-shadow: 0 0 0 2px var(--primary-color, #6366f1), 0 1px 2px rgba(0,0,0,0.03) inset;
-    background: #fff;
+    border-color: var(--primary-color, #3182ce);
+    box-shadow: 0 0 0 2px var(--primary-color-light, #90cdf4);
   }
 `;
 
@@ -1019,23 +996,21 @@ const EditTextArea = styled.textarea`
   }
 `;
 
-// Modern edit icon button
+// Create a component for edit button
 const EditButton = styled.button`
   background: none;
   border: none;
-  color: var(--border-color);
+  color: var(--primary-color);
   cursor: pointer;
-  font-size: 16px;
-  padding: 2px 4px;
-  border-radius: 3px;
-  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.25rem;
+  margin-left: auto;
   display: flex;
   align-items: center;
-  opacity: 1;
-  transition: color 0.15s;
+  gap: 0.25rem;
+  
   &:hover {
-    color: var(--primary-color);
-    background: var(--background-light);
+    color: var(--primary-hover);
   }
 `;
 
@@ -1051,15 +1026,8 @@ const EditColorPicker = styled.input`
 
 // Define styled components for editable fields
 const EditFieldContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.2rem 0 0.2rem 0;
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin-bottom: 0;
+  position: relative;
+  margin-bottom: 1rem;
 `;
 
 const EditColorContainer = styled.div`
@@ -1119,86 +1087,83 @@ const ColorSwatch = styled.div<{ $color: string }>`
 // Create a component for editable field actions
 const EditFieldActions = styled.div`
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0;
+  justify-content: flex-end;
+  gap: 0.5rem;
 `;
 
 // Create a component for editable field button
 const EditFieldButton = styled.button<{ $primary?: boolean }>`
-  padding: 0.38rem 1.1rem;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.97rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  font-weight: 500;
   cursor: pointer;
-  border: none;
-  margin-left: 0;
-  background: ${({ $primary }) => $primary ? 'var(--primary-color)' : 'transparent'};
-  color: ${({ $primary }) => $primary ? '#fff' : 'var(--text-secondary, #555)'};
-  box-shadow: ${({ $primary }) => $primary ? '0 2px 8px rgba(99,102,241,0.10)' : 'none'};
-  border: ${({ $primary }) => $primary ? 'none' : '1.5px solid var(--border-color, #d1d5db)'};
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-  &:hover, &:focus {
-    background: ${({ $primary }) => $primary ? 'var(--primary-hover)' : 'var(--hover-color)'};
-    color: ${({ $primary }) => $primary ? '#fff' : 'var(--primary-color)'};
-    box-shadow: ${({ $primary }) => $primary ? '0 4px 16px rgba(99,102,241,0.13)' : 'none'};
-  }
+  transition: all 0.2s;
+  
+  ${props => props.$primary ? `
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    
+    &:hover {
+      background-color: var(--primary-hover);
+    }
+  ` : `
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    
+    &:hover {
+      background-color: var(--hover-color);
+    }
+  `}
 `;
 
 // Add these styled components for the enhanced item detail modal
 const ItemDetailModalWrapper = styled(ItemDetailModalContent)`
   width: 100%;
-  max-width: 1240px;
+  max-width: 1000px;
   min-width: 600px;
-  max-height: 92vh;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-  background: #fff;
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 0;
+  max-height: 90vh;
   overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+  background-color: var(--background-main);
 `;
 
 const ItemDetailModalHeaderStyled = styled(ItemDetailModalHeader)`
-  padding: 1rem 2rem 0.7rem 2rem;
-  background: #fff;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  padding: 1.5rem 2rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-bottom: 1px solid var(--border-color);
 `;
 
 const ItemDetailModalTitleStyled = styled(ItemDetailModalTitle)`
   span {
-    color: var(--text-primary);
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    line-height: 1.2;
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 600;
   }
 `;
 
 const ItemDetailModalSubtitleStyled = styled(ItemDetailModalSubtitle)`
-  color: var(--text-secondary);
-  font-size: 1rem;
-  margin-top: 0.2rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
 `;
 
 const ItemDetailModalBodyStyled = styled(ItemDetailModalBody)`
-  padding: 1.2rem 2rem 1.2rem 2rem;
-  background: #fff;
+  padding: 2rem;
+  background-color: var(--background-main);
   overflow-y: auto;
-  max-height: calc(92vh - 90px);
+  max-height: calc(90vh - 180px);
+  overflow-x: hidden;
 `;
 
 const ItemDetailModalFooterStyled = styled(ItemDetailModalFooter)`
-  padding: 1.2rem 2rem;
-  background: var(--background-light, #f8fafc);
-  border-top: 1px solid var(--border-color, #e5e7eb);
+  padding: 1.25rem 1.5rem;
+  background-color: var(--background-light);
+  border-top: 1px solid var(--border-color);
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  justify-content: space-between;
 `;
 
 const ItemDetailHeaderActions = styled.div`
@@ -1221,27 +1186,21 @@ interface EditModeButtonProps {
 }
 
 const EditModeButton = styled.button<EditModeButtonProps>`
-  background: var(--primary-color);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.5rem 1.3rem;
-  font-size: 1rem;
-  font-weight: 600;
+  background: ${props => props.disabled ? 'transparent' : 'rgba(255, 255, 255, 0.2)'};
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.10);
-  cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s, color 0.18s;
-  &:hover, &:focus {
-    background: var(--primary-hover);
-    color: #fff;
-    box-shadow: 0 4px 16px rgba(99,102,241,0.13);
-  }
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  font-size: 0.9rem;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? '0.5' : '1'};
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.disabled ? 'transparent' : 'rgba(255, 255, 255, 0.3)'};
   }
 `;
 
@@ -1283,59 +1242,6 @@ function prettifySlug(slug: string): string {
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
 }
-
-// Add new styled components for flexbox-based field rows
-const ItemDetailFlexRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1.2rem;
-  padding: 0.3rem 0 0.3rem 0;
-  font-size: 0.95rem;
-  border-bottom: none;
-  background: transparent;
-  &:not(:last-child) {
-    margin-bottom: 0.2rem;
-  }
-  &.editing, &:focus-within {
-    background: #f3f4f6;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.07);
-  }
-`;
-const ItemDetailFlexLabel = styled.div`
-  flex: 0 0 160px;
-  font-weight: 700;
-  color: #444;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  min-width: 220px;
-  padding-right: 0.7rem;
-  line-height: 1.3;
-  letter-spacing: 0.01em;
-`;
-const ItemDetailFlexValue = styled.div`
-  flex: 1 1 auto;
-  color: #222;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  word-break: break-word;
-  min-width: 0;
-  line-height: 1.4;
-`;
-// For rich text and image fields, use a card-like container
-const FieldCard = styled.div`
-  background: #fafbfc;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  border: 1px solid var(--border-color, #e5e7eb);
-  padding: 0.8rem 1.1rem;
-  margin-bottom: 0.2rem;
-  font-size: 0.95rem;
-`;
 
 const CMSEditor = (): ReactElement => {
   const { selectedProject } = useProjectContext();
@@ -1380,26 +1286,6 @@ const CMSEditor = (): ReactElement => {
   }>({ type: null, collectionId: null });
   const [metadataCollapsed, setMetadataCollapsed] = useState(true);
   const [imageEditState, setImageEditState] = useState<{ [fieldSlug: string]: boolean }>({});
-  // Add a new state for image previews to avoid using hooks inside map function
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [fieldSlug: string]: string | null }>({});
-  const [webflowSiteId, setWebflowSiteId] = useState<string>('');
-
-  // Fetch the real Webflow siteId for the selected project
-  useEffect(() => {
-    const fetchSiteId = async () => {
-      if (!selectedProject?.token) return;
-      try {
-        const response = await webflowAPI.getSites(selectedProject.token);
-        const sites = response.data.sites || [];
-        if (sites.length > 0) {
-          setWebflowSiteId(sites[0].id);
-        }
-      } catch (err) {
-        setWebflowSiteId('');
-      }
-    };
-    fetchSiteId();
-  }, [selectedProject]);
 
   // Only fetch collections for the selected project
   useEffect(() => {
@@ -1407,24 +1293,6 @@ const CMSEditor = (): ReactElement => {
     fetchCollections(selectedProject.token);
     // eslint-disable-next-line
   }, [selectedProject]);
-
-  // Initialize image preview URLs when item details change
-  useEffect(() => {
-    if (itemDetailModal.collection?.fields && itemDetailModal.itemDetails) {
-      const imageFields = itemDetailModal.collection.fields.filter(field => field.type === 'Image');
-      
-      // Initialize preview URLs for all image fields
-      const initialPreviews: {[fieldSlug: string]: string | null} = {};
-      imageFields.forEach(field => {
-        const itemKey = findMatchingKey(field.slug, itemDetailModal.itemDetails);
-        const value = itemDetailModal.itemDetails[itemKey];
-        const imgUrl = typeof value === 'object' ? value.url : value;
-        initialPreviews[field.slug] = imgUrl || null;
-      });
-      
-      setImagePreviewUrls(initialPreviews);
-    }
-  }, [itemDetailModal.collection, itemDetailModal.itemDetails]);
 
   useEffect(() => {
     // Apply filtering and sorting whenever collections or search term changes
@@ -1853,41 +1721,33 @@ const CMSEditor = (): ReactElement => {
     isEditing, 
     onChange, 
     onSave, 
-    onCancel, 
-    inputType = 'text' 
+    onCancel 
   }: { 
     value: string, 
     fieldName: string, 
     isEditing: boolean, 
     onChange: (value: string) => void, 
     onSave: () => void, 
-    onCancel: () => void, 
-    inputType?: string 
+    onCancel: () => void 
   }) => {
-    const [localValue, setLocalValue] = React.useState(value);
-    React.useEffect(() => {
-      if (isEditing) setLocalValue(value);
-    }, [isEditing, value]);
     if (!isEditing) {
       return <span>{value}</span>;
     }
+    
     return (
       <EditFieldContainer>
         <EditTextField 
-          type={inputType}
-          value={localValue}
-          onChange={e => {
-            setLocalValue(e.target.value);
-            onChange(e.target.value);
-          }} 
+          type="text" 
+          value={value} 
+          onChange={(e) => onChange(e.target.value)} 
           autoFocus
         />
         <EditFieldActions>
           <EditFieldButton onClick={onSave} $primary>
-            Save
+            <FiCheck />
           </EditFieldButton>
           <EditFieldButton onClick={onCancel}>
-            Cancel
+            <FiX />
           </EditFieldButton>
         </EditFieldActions>
       </EditFieldContainer>
@@ -1910,30 +1770,24 @@ const CMSEditor = (): ReactElement => {
     onSave: () => void, 
     onCancel: () => void 
   }) => {
-    const [localValue, setLocalValue] = React.useState(value);
-    React.useEffect(() => {
-      if (isEditing) setLocalValue(value);
-    }, [isEditing, value]);
     if (!isEditing) {
       return <ExpandableTextField value={value} />;
     }
+    
     return (
       <EditFieldContainer>
         <EditTextArea 
-          value={localValue}
-          onChange={e => {
-            setLocalValue(e.target.value);
-            onChange(e.target.value);
-          }} 
+          value={value} 
+          onChange={(e) => onChange(e.target.value)} 
           rows={5}
           autoFocus
         />
         <EditFieldActions>
           <EditFieldButton onClick={onSave} $primary>
-            Save
+            <FiCheck />
           </EditFieldButton>
           <EditFieldButton onClick={onCancel}>
-            Cancel
+            <FiX />
           </EditFieldButton>
         </EditFieldActions>
       </EditFieldContainer>
@@ -2025,171 +1879,74 @@ const CMSEditor = (): ReactElement => {
       color: white;
     }
   `;
-
-  // Add image input for toolbar
-  const ToolbarFileInput = styled.input`
-    display: none;
-  `;
-
-  const RichTextToolbar = ({ editorRef, onImageInsert, imageButtonDisabled }: { editorRef: React.RefObject<HTMLDivElement | null>, onImageInsert: (file: File) => void, imageButtonDisabled?: boolean }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  // Allow null in ref type for RichTextToolbar
+  const RichTextToolbar = ({ editorRef }: { editorRef: React.RefObject<HTMLDivElement | null> }) => {
     const format = (command: string, value?: string) => {
       if (editorRef.current) {
         editorRef.current.focus();
         document.execCommand(command, false, value);
       }
     };
-    const handleImageClick = () => {
-      if (fileInputRef.current) fileInputRef.current.click();
-    };
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        onImageInsert(file);
-        e.target.value = '';
-      }
-    };
     return (
       <div style={{ marginBottom: '0.5rem' }}>
-        {[1,2,3,4,5,6].map(h => (
-          <ToolbarButton key={h} type="button" onClick={() => format('formatBlock', `<h${h}>`)}>
-            <span style={{fontWeight:'bold',fontSize: h === 1 ? '1.2em' : undefined}}>{`H${h}`}</span>
-          </ToolbarButton>
-        ))}
+        <ToolbarButton type="button" onClick={() => format('formatBlock', '<h1>')}><span style={{fontWeight:'bold',fontSize:'1.2em'}}>H1</span></ToolbarButton>
+        <ToolbarButton type="button" onClick={() => format('formatBlock', '<h2>')}><span style={{fontWeight:'bold'}}>H2</span></ToolbarButton>
         <ToolbarButton type="button" onClick={() => format('formatBlock', '<p>')}>P</ToolbarButton>
         <ToolbarButton type="button" onClick={() => format('bold')}><b>B</b></ToolbarButton>
         <ToolbarButton type="button" onClick={() => format('italic')}><i>I</i></ToolbarButton>
         <ToolbarButton type="button" onClick={() => format('underline')}><u>U</u></ToolbarButton>
-        <ToolbarButton type="button" onClick={handleImageClick} title="Insert Image" disabled={imageButtonDisabled}>
-          🖼️
-          <ToolbarFileInput ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} />
-        </ToolbarButton>
       </div>
     );
   };
 
-  // Replace EditableRichTextField with a version that supports image upload and all headings
+  // Replace EditableRichTextField with a React 19 compatible version
   const EditableRichTextField = ({
     value,
     fieldName,
     isEditing,
     onChange,
     onSave,
-    onCancel,
-    webflowSiteId,
-    projectToken
+    onCancel
   }: {
     value: string,
     fieldName: string,
     isEditing: boolean,
     onChange: (value: string) => void,
     onSave: () => void,
-    onCancel: () => void,
-    webflowSiteId: string,
-    projectToken: string
+    onCancel: () => void
   }) => {
     const editableRef = useRef<HTMLDivElement>(null);
-    const [localValue, setLocalValue] = React.useState(value);
-    const [uploading, setUploading] = useState(false);
-
-    React.useEffect(() => {
-      if (isEditing) setLocalValue(value);
-    }, [isEditing, value]);
-
-    const insertImageAtCursor = (url: string) => {
-      if (editableRef.current) {
-        editableRef.current.focus();
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = '';
-        img.style.maxWidth = '100%';
-        img.style.borderRadius = '4px';
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-          const range = sel.getRangeAt(0);
-          range.collapse(false);
-          range.insertNode(img);
-          // Move cursor after image
-          range.setStartAfter(img);
-          range.setEndAfter(img);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } else {
-          editableRef.current.appendChild(img);
-        }
-      }
-    };
-
-    const handleImageInsert = async (file: File) => {
-      if (!projectToken || !webflowSiteId) {
-        alert('Webflow site is not ready yet. Please wait and try again.');
-        return;
-      }
-      setUploading(true);
-      try {
-        const fileBuffer = await file.arrayBuffer();
-        // @ts-ignore
-        const SparkMD5 = (await import('spark-md5')).default;
-        const fileHash = SparkMD5.ArrayBuffer.hash(fileBuffer);
-        const metaRes = await webflowAPI.createAssetMetadata(
-          webflowSiteId,
-          file.name,
-          fileHash,
-          projectToken
-        );
-        const { uploadUrl, uploadDetails } = metaRes.data;
-        const s3Form = new FormData();
-        Object.entries(uploadDetails).forEach(([key, value]) => {
-          s3Form.append(key, value as string);
-        });
-        s3Form.append('file', file);
-        await fetch(uploadUrl, { method: 'POST', body: s3Form });
-        const hostedUrl = metaRes.data.hostedUrl || `https://${uploadDetails.bucket}.s3.amazonaws.com/${uploadDetails.key}`;
-        insertImageAtCursor(hostedUrl);
-        if (editableRef.current) {
-          setLocalValue(editableRef.current.innerHTML);
-        }
-      } catch (err) {
-        alert('Image upload failed: ' + ((err as any)?.message || String(err)));
-      }
-      setUploading(false);
-    };
 
     if (!isEditing) {
       return <RichTextField value={value} />;
     }
+
     const handleSave = () => {
       if (editableRef.current) {
         const html = editableRef.current.innerHTML;
-        setLocalValue(html);
-        onChange(html);
-        onSave(); // exit edit mode
+        console.log('[RICH TEXT SAVE]', fieldName, html);
+        onChange(html); // This now does both: update and close edit mode
       }
     };
-    const handleCancel = () => {
-      setLocalValue(value);
-      onCancel(); // exit edit mode
-    };
+
     return (
       <EditFieldContainer>
-        <RichTextToolbar editorRef={editableRef} onImageInsert={handleImageInsert} imageButtonDisabled={!webflowSiteId || uploading} />
+        <RichTextToolbar editorRef={editableRef} />
         <ModernContentEditable
           ref={editableRef}
           contentEditable
           suppressContentEditableWarning
           spellCheck
-          defaultValue={localValue}
-          dangerouslySetInnerHTML={{ __html: localValue }}
+          defaultValue={value}
+          dangerouslySetInnerHTML={{ __html: value }}
           aria-label={fieldName}
         />
-        {uploading && <div style={{ color: 'var(--primary-color)', fontSize: '0.9em', margin: '0.5em 0' }}>Uploading image...</div>}
-        {!webflowSiteId && <div style={{ color: 'var(--error-color)', fontSize: '0.9em', margin: '0.5em 0' }}>Webflow site is not ready yet. Please wait...</div>}
         <EditFieldActions>
           <EditFieldButton onClick={handleSave} $primary>
-            Save
+            <FiCheck />
           </EditFieldButton>
-          <EditFieldButton onClick={handleCancel}>
-            Cancel
+          <EditFieldButton onClick={onCancel}>
+            <FiX />
           </EditFieldButton>
         </EditFieldActions>
       </EditFieldContainer>
@@ -2399,13 +2156,6 @@ const CMSEditor = (): ReactElement => {
     margin-right: 0.75rem;
     font-size: 1.2em;
     transition: transform 0.2s;
-  `;
-
-  // Place SectionDivider after all other styled components
-  const SectionDivider = styled.hr`
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 2rem 0 1rem 0;
   `;
 
   return (
@@ -2734,419 +2484,33 @@ const CMSEditor = (): ReactElement => {
                 <ItemDetailGrid>
                   <ItemDetailSection>
                     <ItemDetailSectionTitle>Item Fields</ItemDetailSectionTitle>
-                    <div>
-                      {itemDetailModal.collection.fields && itemDetailModal.collection.fields.map((field: any) => {
-                        if (!field) return null;
-                        const itemKey = findMatchingKey(field.slug, itemDetailModal.itemDetails);
-                        const value = itemDetailModal.itemDetails[itemKey];
-                        const isEditing = itemDetailModal.editMode && itemDetailModal.editingFields && itemDetailModal.editingFields[field.slug];
-                        // Use the edited value if present, otherwise the original
-                        let imgUrl = undefined;
-                        if (itemDetailModal.fieldEdits && Object.prototype.hasOwnProperty.call(itemDetailModal.fieldEdits, field.slug)) {
-                          const editValue = itemDetailModal.fieldEdits[field.slug];
-                          imgUrl = editValue && typeof editValue === 'object' ? editValue.url : editValue;
-                        } else {
-                          imgUrl = typeof value === 'object' ? value.url : value;
-                        }
-                        // Get the current preview URL from the global state - initialization is handled in useEffect
-                        const previewUrl = imagePreviewUrls[field.slug];
-                        const fieldValue = (itemDetailModal.fieldEdits && Object.prototype.hasOwnProperty.call(itemDetailModal.fieldEdits, field.slug)) ? itemDetailModal.fieldEdits[field.slug] : value;
-                        
-                        const startEditing = () => {
-                          if (!itemDetailModal.editMode) return;
-                          setItemDetailModal({
-                            ...itemDetailModal,
-                            editingFields: {
-                              ...itemDetailModal.editingFields,
-                              [field.slug]: true
-                            },
-                            fieldEdits: {
-                              ...itemDetailModal.fieldEdits,
-                              [field.slug]: value
-                            }
-                          });
-                        };
-                        
-                        const saveEdit = () => {
-                          // For image fields, sync the preview URL with the field edit
-                          if (field.type === 'Image') {
-                            // Ensure the fieldEdits has the current preview URL
-                            const currentPreviewUrl = imagePreviewUrls[field.slug];
-                            if (currentPreviewUrl !== undefined) {
-                              // If we have a preview URL (including null for removed images)
-                              if (currentPreviewUrl === null) {
-                                // Image was removed
-                                handleChange(null);
-                              } else {
-                                // Image was changed or added
-                                const currentEdit = itemDetailModal.fieldEdits[field.slug];
-                                handleChange({
-                                  url: currentPreviewUrl,
-                                  fileName: typeof currentEdit === 'object' ? currentEdit.fileName || 'image' : 'image',
-                                  fileSize: typeof currentEdit === 'object' ? currentEdit.fileSize : 0,
-                                  fileType: typeof currentEdit === 'object' ? currentEdit.fileType : 'image/jpeg',
-                                });
-                              }
-                            }
-                          }
-
-                          // Exit edit mode for this field
-                          setItemDetailModal(prev => ({
-                            ...prev,
-                            editingFields: {
-                              ...prev.editingFields,
-                              [field.slug]: false
-                            }
-                          }));
-                        };
-
-                        const cancelEdit = () => {
-                          setItemDetailModal({
-                            ...itemDetailModal,
-                            editingFields: {
-                              ...itemDetailModal.editingFields,
-                              [field.slug]: false
-                            },
-                            fieldEdits: {
-                              ...itemDetailModal.fieldEdits,
-                              [field.slug]: value // Reset to original value
-                            }
-                          });
-                          
-                          // Reset the preview URL when canceling
-                          if (field.type === 'Image') {
-                            setImagePreviewUrls(prev => ({
-                              ...prev,
-                              [field.slug]: imgUrl || null
-                            }));
-                          }
-                        };
-
-                        const handleChange = (newValue: any) => {
-                          setItemDetailModal({
-                            ...itemDetailModal,
-                            fieldEdits: {
-                              ...itemDetailModal.fieldEdits,
-                              [field.slug]: newValue
-                            }
-                          });
-                        };
-                        
-                        // Handle file selection for image fields
-                        const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          // Show a temporary preview while uploading
-                          const tempPreviewUrl = URL.createObjectURL(file);
-                          setImagePreviewUrls(prev => ({
-                            ...prev,
-                            [field.slug]: tempPreviewUrl
-                          }));
-                          // Set a temporary field value
-                          handleChange({
-                            url: tempPreviewUrl,
-                            fileName: file.name,
-                            fileSize: file.size,
-                            fileType: file.type,
-                            _isTemporary: true
-                          });
-
-                          // --- Upload to Webflow ---
-                          try {
-                            if (!selectedProject?.token || !itemDetailModal.collection?.siteId) {
-                              throw new Error('Missing project token or siteId');
-                            }
-                            // Calculate file hash (for deduplication, as in Assets page)
-                            const fileBuffer = await file.arrayBuffer();
-                            // Use SparkMD5 for hashing (already used in Assets page)
-                            // @ts-ignore
-                            const SparkMD5 = (await import('spark-md5')).default;
-                            const fileHash = SparkMD5.ArrayBuffer.hash(fileBuffer);
-                            // Step 1: Get upload URL and metadata
-                            const metaRes = await webflowAPI.createAssetMetadata(
-                              itemDetailModal.collection.siteId,
-                              file.name,
-                              fileHash,
-                              selectedProject.token
-                            );
-                            const { uploadUrl, uploadDetails } = metaRes.data;
-                            // Step 2: Upload to S3
-                            const s3Form = new FormData();
-                            Object.entries(uploadDetails).forEach(([key, value]) => {
-                              s3Form.append(key, value as string);
-                            });
-                            s3Form.append('file', file);
-                            await fetch(uploadUrl, { method: 'POST', body: s3Form });
-                            // Step 3: Use hostedUrl as the final image URL
-                            const hostedUrl = metaRes.data.hostedUrl || `https://${uploadDetails.bucket}.s3.amazonaws.com/${uploadDetails.key}`;
-                            setImagePreviewUrls(prev => ({
-                              ...prev,
-                              [field.slug]: hostedUrl
-                            }));
-                            handleChange({
-                              url: hostedUrl,
-                              fileName: file.name,
-                              fileSize: file.size,
-                              fileType: file.type
-                            });
-                          } catch (err) {
-                            // On error, revert preview and field value
-                            setImagePreviewUrls(prev => ({
-                              ...prev,
-                              [field.slug]: null
-                            }));
-                            handleChange(null);
-                            alert('Image upload failed: ' + ((err as any)?.message || String(err)));
-                          }
-                        };
-
-                        // Component for rendering an image field
-                        const renderImageField = (): ReactElement => {
-                          if (!isEditing) {
-                            return (
-                              <ImageFieldContainer>
-                                {imgUrl ? (
-                                  <>
-                                    <ImageThumbnail src={imgUrl} alt={field.name || field.slug} />
-                                    <ImageDetails>
-                                      <span>{field.name || prettifySlug(field.slug)}</span>
-                                      {itemDetailModal.editMode && (
-                                        <EditButton onClick={startEditing}>
-                                          <FiEdit />
-                                        </EditButton>
-                                      )}
-                                    </ImageDetails>
-                                  </>
-                                ) : (
-                                  <EmptyValue>No image</EmptyValue>
-                                )}
-                              </ImageFieldContainer>
-                            );
-                          }
-
-                          return (
-                            <EditFieldContainer>
-                              {previewUrl && (
-                                <div style={{ marginBottom: '1rem' }}>
-                                  <ImageThumbnail 
-                                    src={previewUrl} 
-                                    alt="Preview" 
-                                    style={{ width: '120px', height: '120px' }} 
-                                  />
-                                </div>
-                              )}
-                              
-                              <div style={{ marginBottom: '1rem' }}>
-                                <FileInputLabel htmlFor={`file-upload-${field.slug}`}>
-                                  {previewUrl ? 'Change Image' : 'Upload Image'}
-                                </FileInputLabel>
-                                <FileInput
-                                  id={`file-upload-${field.slug}`}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleFileChange}
-                                />
-                                
-                                {previewUrl && (
-                                  <button 
-                                    onClick={() => {
-                                      // Update the global preview URL state
-                                      setImagePreviewUrls(prev => ({
-                                        ...prev,
-                                        [field.slug]: null
-                                      }));
-                                      handleChange(null);
-                                    }}
-                                    style={{
-                                      marginLeft: '0.5rem',
-                                      padding: '0.4rem 1rem',
-                                      background: 'rgba(229, 62, 62, 0.1)',
-                                      color: 'var(--error-color)',
-                                      border: '1px solid var(--error-color)',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    Remove
-                                  </button>
-                                )}
-                              </div>
-                              
-                              <EditFieldActions>
-                                <EditFieldButton onClick={saveEdit} $primary>
-                                  <FiCheck />
-                                </EditFieldButton>
-                                <EditFieldButton onClick={cancelEdit}>
-                                  <FiX />
-                                </EditFieldButton>
-                              </EditFieldActions>
-                            </EditFieldContainer>
-                          );
-                        };
-
-                        // At the end of the callback, ensure a return value:
-                        // If for some reason field is missing, return null
-                        if (!field) return null;
-                        return (
-                          <ItemDetailFlexRow key={field.id || field.slug} className={`${isEditing ? 'editing' : ''} ${field.type === 'Image' ? 'image-row' : ''}`}>
-                            <ItemDetailFlexLabel>
-                              {field.name || prettifySlug(field.slug)}
-                              <FieldTypeLabel>{field.type}</FieldTypeLabel>
-                              {!isEditing && itemDetailModal.editMode && field.type !== 'Image' && (
-                                <EditButton onClick={startEditing} className="edit-icon">
-                                  <FiEdit />
-                                </EditButton>
-                              )}
-                            </ItemDetailFlexLabel>
-                            <ItemDetailFlexValue>
-                              {value === null || value === undefined ? (
-                                <EmptyValue>No value</EmptyValue>
-                              ) : field.type === 'PlainText' || field.type === 'String' || field.type === 'Email' || field.type === 'Link' ? (
-                                <EditableTextField
-                                  value={fieldValue || ''}
-                                  fieldName={field.slug}
-                                  isEditing={isEditing}
-                                  onChange={handleChange}
-                                  onSave={saveEdit}
-                                  onCancel={cancelEdit}
-                                  inputType={field.type === 'Email' ? 'email' : field.type === 'Link' ? 'url' : 'text'}
-                                />
-                              ) : field.type === 'RichText' ? (
-                                <EditableRichTextField
-                                  value={fieldValue || ''}
-                                  fieldName={field.slug}
-                                  isEditing={isEditing}
-                                  onChange={handleChange}
-                                  onSave={saveEdit}
-                                  onCancel={cancelEdit}
-                                  webflowSiteId={webflowSiteId}
-                                  projectToken={selectedProject?.token || ''}
-                                />
-                              ) : field.type === 'Boolean' ? (
-                                <EditableBooleanField
-                                  value={Boolean(fieldValue)}
-                                  fieldName={field.slug}
-                                  isEditing={isEditing}
-                                  onChange={handleChange}
-                                  onSave={saveEdit}
-                                  onCancel={cancelEdit}
-                                />
-                              ) : field.type === 'Color' ? (
-                                <EditableColorField
-                                  value={fieldValue || ''}
-                                  fieldName={field.slug}
-                                  isEditing={isEditing}
-                                  onChange={handleChange}
-                                  onSave={saveEdit}
-                                  onCancel={cancelEdit}
-                                />
-                              ) : field.type === 'Image' ? (
-                                renderImageField()
-                              ) : (
-                                <span>{String(fieldValue)}</span>
-                              )}
-                            </ItemDetailFlexValue>
-                          </ItemDetailFlexRow>
-                        );
-                      })}
-                    </div>
-                  </ItemDetailSection>
-                </ItemDetailGrid>
-              )}
-            </ItemDetailModalBodyStyled>
-            
-            <ItemDetailModalFooterStyled>
-              <div>
-                {itemDetailModal.editMode && (
-                  <CancelButton 
-                    onClick={() => {
-                      setItemDetailModal({
-                        ...itemDetailModal,
-                        editMode: false,
-                        editingFields: {},
-                        fieldEdits: {}
-                      });
-                      // Reset all image previews to their original values
-                      if (itemDetailModal.collection?.fields && itemDetailModal.itemDetails) {
-                        const imageFields = itemDetailModal.collection.fields.filter(field => field.type === 'Image');
-                        const initialPreviews: {[fieldSlug: string]: string | null} = {};
-                        imageFields.forEach(field => {
+                    <ItemDetailTable>
+                      <tbody>
+                        {itemDetailModal.collection.fields && itemDetailModal.collection.fields.map((field: any) => {
                           const itemKey = findMatchingKey(field.slug, itemDetailModal.itemDetails);
                           const value = itemDetailModal.itemDetails[itemKey];
-                          const imgUrl = typeof value === 'object' ? value.url : value;
-                          initialPreviews[field.slug] = imgUrl || null;
-                        });
-                        setImagePreviewUrls(initialPreviews);
-                      }
-                    }}
-                  >
-                    Cancel
-                  </CancelButton>
-                )}
-              </div>
-              <div>
-                {itemDetailModal.editMode ? (
-                  <SaveButton 
-                    onClick={async () => {
-                      if (!itemDetailModal.collection || !itemDetailModal.item || !selectedProject?.token || !itemDetailModal.collection.fields) return;
-                      setItemDetailModal(prev => ({ ...prev, isSaving: true }));
-                      try {
-                        // Prepare updated field edits, including image fields
-                        const imageFields = itemDetailModal.collection.fields.filter(field => field.type === 'Image');
-                        const updatedFieldEdits = { ...itemDetailModal.fieldEdits };
-                        imageFields.forEach(field => {
-                          const previewUrl = imagePreviewUrls[field.slug];
-                          const currentEdit = updatedFieldEdits[field.slug];
-                          if (previewUrl) {
-                            if (!currentEdit || (typeof currentEdit === 'object' && currentEdit.url !== previewUrl)) {
-                              updatedFieldEdits[field.slug] = {
-                                url: previewUrl,
-                                fileName: typeof currentEdit === 'object' ? currentEdit.fileName || 'image' : 'image',
-                                fileSize: typeof currentEdit === 'object' ? currentEdit.fileSize : 0,
-                                fileType: typeof currentEdit === 'object' ? currentEdit.fileType : 'image/jpeg',
-                              };
-                            }
-                          } else if (previewUrl === null) {
-                            updatedFieldEdits[field.slug] = null;
-                          }
-                        });
-                        // Call Webflow API to update the item
-                        await webflowAPI.updateCollectionItem(
-                          itemDetailModal.collection.id,
-                          itemDetailModal.item.id || itemDetailModal.item._id,
-                          { fieldData: updatedFieldEdits },
-                          selectedProject.token
-                        );
-                        // Fetch updated item details
-                        await fetchItemDetails(itemDetailModal.collection, itemDetailModal.item);
-                        setItemDetailModal(prev => ({ ...prev, editMode: false, editingFields: {}, isSaving: false }));
-                      } catch (err) {
-                        setItemDetailModal(prev => ({ ...prev, isSaving: false }));
-                        alert('Failed to update item: ' + ((err as any)?.message || String(err)));
-                      }
-                    }}
-                    disabled={itemDetailModal.isSaving}
-                    style={{
-                      backgroundColor: 'var(--primary-color)',
-                      color: 'white',
-                      padding: '0.5rem 1.5rem',
-                      fontWeight: 'bold',
-                      fontSize: '1rem'
-                    }}
-                  >
-                    {itemDetailModal.isSaving ? 'Saving...' : 'Save All Changes'}
-                  </SaveButton>
-                ) : (
-                  <ImportedActionButton onClick={closeItemDetailModal}>Close</ImportedActionButton>
-                )}
-              </div>
-            </ItemDetailModalFooterStyled>
-          </ItemDetailModalWrapper>
-        </ModalOverlay>
-      )}
-    </CmsEditorContainer>
-  );
-};
-
-export default CMSEditor;
+                          const isEditing = itemDetailModal.editMode && itemDetailModal.editingFields && itemDetailModal.editingFields[field.slug];
+                          const fieldValue = (itemDetailModal.fieldEdits && Object.prototype.hasOwnProperty.call(itemDetailModal.fieldEdits, field.slug)) ? itemDetailModal.fieldEdits[field.slug] : value;
+                          const startEditing = () => {
+                            if (!itemDetailModal.editMode) return;
+                            setItemDetailModal({
+                              ...itemDetailModal,
+                              editingFields: {
+                                ...itemDetailModal.editingFields,
+                                [field.slug]: true
+                              },
+                              fieldEdits: {
+                                ...itemDetailModal.fieldEdits,
+                                [field.slug]: value
+                              }
+                            });
+                          };
+                          const saveEdit = () => {
+                            // Get the field value to check for temporary URLs
+                            const fieldValue = itemDetailModal.fieldEdits[field.slug];
+                            
+                            // Construct the final URL that includes the asset domain
+                            // First try hostedUrl, then fall back to uploading
+                            const assetUrl = metaRes.data.hostedUrl || 
+                              `https://${uploadDetails.bucket}.s3.amazonaws.com/${uploadDetails.key}`;
+                            

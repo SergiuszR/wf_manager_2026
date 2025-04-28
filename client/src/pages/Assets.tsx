@@ -411,7 +411,8 @@ const Assets: React.FC = () => {
         await webflowAPI.updateAssetAltText(
           asset.id, 
           altTextInput.trim(),
-          selectedProject?.token
+          selectedProject?.token,
+          asset.name
         );
         // Update asset in state
         setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, altText: altTextInput.trim() } : a));
@@ -663,7 +664,8 @@ const Assets: React.FC = () => {
           await webflowAPI.updateAssetAltText(
             assetId, 
             f.altText, 
-            selectedProject.token
+            selectedProject.token,
+            f.file.name
           );
         }
         updatedFiles[i].progress = 100;

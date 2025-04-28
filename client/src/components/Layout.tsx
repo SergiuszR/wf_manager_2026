@@ -847,22 +847,13 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             <ActionText>Publish Site</ActionText>
           </ActionButton>
           
-          {/* Scheduled Publishes Indicator - always show container with message when empty */}
-          <ScheduledPublishesContainer 
-            $hasScheduledPublishes={Object.keys(publishState.scheduledPublishes).length > 0}
-          >
-            <ScheduledPublishesTitle
-              $hasScheduledPublishes={Object.keys(publishState.scheduledPublishes).length > 0}
-            >
-              Scheduled Publishes 
-              {Object.keys(publishState.scheduledPublishes).length > 0 && 
-                `(${Object.keys(publishState.scheduledPublishes).length})`
-              }
-            </ScheduledPublishesTitle>
-            
-            {Object.keys(publishState.scheduledPublishes).length > 0 ? (
-              Object.entries(publishState.scheduledPublishes).map(([siteId, scheduledTime]) => {
-                console.log(`Rendering scheduled publish for site ${siteId} at ${scheduledTime}`);
+          {/* Scheduled Publishes Indicator - only show if there are scheduled publishes */}
+          {Object.keys(publishState.scheduledPublishes).length > 0 && (
+            <ScheduledPublishesContainer $hasScheduledPublishes={true}>
+              <ScheduledPublishesTitle $hasScheduledPublishes={true}>
+                Scheduled Publishes ({Object.keys(publishState.scheduledPublishes).length})
+              </ScheduledPublishesTitle>
+              {Object.entries(publishState.scheduledPublishes).map(([siteId, scheduledTime]) => {
                 const siteName = publishState.sites.find(s => s.id === siteId)?.name || siteId;
                 return (
                   <ScheduledPublishItem key={siteId}>
@@ -875,13 +866,9 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                     </CancelScheduleButton>
                   </ScheduledPublishItem>
                 );
-              })
-            ) : (
-              <EmptyScheduleMessage>
-                No scheduled publishes. Use the Publish button to schedule one.
-              </EmptyScheduleMessage>
-            )}
-          </ScheduledPublishesContainer>
+              })}
+            </ScheduledPublishesContainer>
+          )}
         </Nav>
         <UserSection>
           {user && (
