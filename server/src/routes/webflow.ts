@@ -12,7 +12,9 @@ import {
   getPageDom,
   getCollectionDetails,
   getCollectionItems,
-  getPageCustomCode
+  getPageCustomCode,
+  getCollectionItem,
+  updateCollectionItem
 } from '../controllers/webflow';
 
 // Import asset controllers from the new file we created
@@ -50,6 +52,9 @@ router.get('/pages/:pageId/custom-code', getPageCustomCode as unknown as Request
 router.get('/collections', getCollections as unknown as RequestHandler);
 router.get('/collections/:collectionId', getCollectionDetails as unknown as RequestHandler);
 router.get('/collections/:collectionId/items', getCollectionItems as unknown as RequestHandler);
+router.get('/collections/:collectionId/items/:itemId', getCollectionItem as unknown as RequestHandler);
+router.patch('/collections/:collectionId/items/:itemId', updateCollectionItem as unknown as RequestHandler);
+router.get('/v2/collections/:collectionId/items/:itemId', getCollectionItem as unknown as RequestHandler);
 router.get('/sites', getSites as unknown as RequestHandler);
 
 // Webflow action routes
@@ -58,7 +63,7 @@ router.post('/sites/publish', publishSite as unknown as RequestHandler);
 // Assets
 router.get('/sites/:siteId/assets', getAssets as unknown as RequestHandler);
 router.get('/assets/:assetId', getAssetById as unknown as RequestHandler);
-router.post('/sites/:siteId/assets', upload.single('file'), uploadAsset as unknown as RequestHandler);
+router.post('/sites/:siteId/assets', uploadAsset as unknown as RequestHandler);
 router.get('/sites/:siteId/assets/csv', downloadAssetsCSV as unknown as RequestHandler);
 router.patch('/assets/:assetId', updateAssetAltText as unknown as RequestHandler);
 

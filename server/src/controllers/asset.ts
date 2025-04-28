@@ -148,8 +148,26 @@ export const getAssetById = (async (req: Request, res: Response) => {
 // Make this a custom request handler for multer
 export const uploadAsset = (async (req: Request, res: Response) => {
   console.log('=== UPLOAD ASSET START ===');
-  const webflowToken = getWebflowToken(req.user);
+  
+  // Check for header token first
+  const headerToken = req.headers['x-webflow-token'] as string | undefined;
+  if (headerToken) {
+    console.log('Using token from x-webflow-token header');
+    console.log(`Token length: ${headerToken.length}`);
+  } else {
+    console.log('No x-webflow-token header found, trying user token');
+  }
+  
+  // Get from user if no header token
+  const webflowToken = headerToken || getWebflowToken(req.user);
+  
+  console.log(`User ID: ${req.user}`);
+  console.log(`Header token present: ${!!headerToken}`);
+  console.log(`User token present: ${!!getWebflowToken(req.user)}`);
+  console.log(`Final token present: ${!!webflowToken}`);
+  
   if (!webflowToken) {
+    console.log('ERROR: No valid token found');
     return res.status(401).json({ message: 'No Webflow token found' });
   }
 
@@ -165,6 +183,8 @@ export const uploadAsset = (async (req: Request, res: Response) => {
   }
 
   try {
+    console.log(`Creating asset metadata for site ${siteId} with fileName: ${fileName}`);
+    
     // Step 1: Request upload details from Webflow
     const response = await axios.post(
       `https://api.webflow.com/beta/sites/${siteId}/assets`,
@@ -176,6 +196,10 @@ export const uploadAsset = (async (req: Request, res: Response) => {
         }
       }
     );
+    
+    console.log('Successfully obtained upload details from Webflow');
+    console.log('=== UPLOAD ASSET END ===');
+    
     // Return uploadUrl, uploadDetails, and asset id to frontend
     return res.status(200).json({
       uploadUrl: response.data.uploadUrl,
@@ -184,6 +208,11 @@ export const uploadAsset = (async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error uploading asset (step 1):', error);
+    if (error.response) {
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', JSON.stringify(error.response.data));
+    }
+    
     const statusCode = error.response?.status || 500;
     const errorMessage = error.response?.data?.message || 'Failed to get upload details from Webflow';
     return res.status(statusCode).json({ 
@@ -267,24 +296,54 @@ export const downloadAssetsCSV = (async (req: Request, res: Response) => {
  * Update asset altText
  */
 export const updateAssetAltText = (async (req: Request, res: Response) => {
-  const webflowToken = getWebflowToken(req.user);
+  console.log('=== UPDATE ASSET ALT TEXT START ===');
+  
+  // Check for header token first
+  const headerToken = req.headers['x-webflow-token'] as string | undefined;
+  if (headerToken) {
+    console.log('Using token from x-webflow-token header');
+    console.log(`Token length: ${headerToken.length}`);
+  } else {
+    console.log('No x-webflow-token header found, trying user token');
+  }
+  
+  // Get from user if no header token
+  const webflowToken = headerToken || getWebflowToken(req.user);
+  
+  console.log(`User ID: ${req.user}`);
+  console.log(`Header token present: ${!!headerToken}`);
+  console.log(`User token present: ${!!getWebflowToken(req.user)}`);
+  console.log(`Final token present: ${!!webflowToken}`);
+  
   if (!webflowToken) {
+    console.log('ERROR: No valid token found');
     return res.status(401).json({ message: 'No Webflow token found' });
   }
 
   const { assetId } = req.params;
-  const { altText } = req.body;
+  const { altText, displayName } = req.body;
   if (!assetId) {
     return res.status(400).json({ message: 'Asset ID is required' });
   }
-  if (typeof altText !== 'string') {
-    return res.status(400).json({ message: 'altText is required' });
+  if (typeof altText !== 'string' && typeof displayName !== 'string') {
+    return res.status(400).json({ message: 'At least one of altText or displayName is required' });
   }
 
   try {
+    // Prepare the request body with only the provided fields
+    const requestBody: { altText?: string; displayName?: string } = {};
+    if (typeof altText === 'string') {
+      requestBody.altText = altText;
+    }
+    if (typeof displayName === 'string') {
+      requestBody.displayName = displayName;
+    }
+
+    console.log(`Updating asset ${assetId} with data:`, requestBody);
+    
     const response = await axios.patch(
       `https://api.webflow.com/beta/assets/${assetId}`,
-      { altText },
+      requestBody,
       {
         headers: {
           'Authorization': `Bearer ${webflowToken}`,
@@ -292,10 +351,20 @@ export const updateAssetAltText = (async (req: Request, res: Response) => {
         },
       }
     );
+    
+    console.log('Asset updated successfully');
+    console.log('=== UPDATE ASSET ALT TEXT END ===');
+    
     return res.status(200).json(response.data);
   } catch (error: any) {
+    console.error('Error updating asset:', error);
+    if (error.response) {
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+    }
+    
     const statusCode = error.response?.status || 500;
-    const errorMessage = error.response?.data?.message || 'Failed to update asset altText';
+    const errorMessage = error.response?.data?.message || 'Failed to update asset';
     return res.status(statusCode).json({
       message: errorMessage,
       error: error.message

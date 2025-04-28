@@ -95,6 +95,27 @@ Open your browser and navigate to `http://localhost:3000`
 4. Under "API Access", generate a new token
 5. Use this token to authenticate in the application
 
+## Deployment on Vercel
+
+To deploy this app on Vercel and ensure full functionality:
+
+1. **Set Environment Variables**
+   - Go to your Vercel project dashboard.
+   - Navigate to Settings > Environment Variables.
+   - Add the following variables (values from your Supabase project):
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_ANON_KEY`
+
+2. **Deploy**
+   - After setting the variables, redeploy your project.
+
+3. **Backend/API**
+   - If your app relies on a backend (e.g., `/server`), ensure it is also deployed and accessible from your Vercel frontend.
+   - Update any API URLs in your frontend to point to the deployed backend if needed.
+
+4. **Troubleshooting**
+   - If you see empty states or missing data, double-check your environment variables and backend/API accessibility.
+
 ## License
 
 MIT 

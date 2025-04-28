@@ -785,6 +785,114 @@ const getCollectionItems = async (req: Request, res: Response) => {
   }
 };
 
+// Get a single collection item by ID
+const getCollectionItem = async (req: Request, res: Response) => {
+  try {
+    const { collectionId, itemId } = req.params;
+    
+    if (!collectionId) {
+      return res.status(400).json({ message: 'Collection ID is required' });
+    }
+    
+    if (!itemId) {
+      return res.status(400).json({ message: 'Item ID is required' });
+    }
+    
+    const webflowToken = getEffectiveWebflowToken(req);
+    if (!webflowToken) {
+      return res.status(400).json({ message: 'No Webflow token available' });
+    }
+    
+    const client = createWebflowAPIClient(webflowToken);
+    
+    // Use the v2 endpoint for individual item as per Webflow API documentation
+    console.log(`Fetching item: /v2/collections/${collectionId}/items/${itemId}`);
+    const response = await client.get(`/v2/collections/${collectionId}/items/${itemId}`);
+    
+    // Return the full item data
+    res.status(200).json(response.data);
+  } catch (error: any) {
+    console.error('Error fetching collection item:', error.message);
+    
+    // Forward the appropriate status code from the Webflow API
+    if (error.response?.status) {
+      return res.status(error.response.status).json({ 
+        message: 'Error fetching collection item', 
+        error: error.response?.data?.message || error.message 
+      });
+    }
+    
+    res.status(500).json({ message: 'Error fetching collection item', error: error.message });
+  }
+};
+
+// Update a collection item
+const updateCollectionItem = async (req: Request, res: Response) => {
+  try {
+    const { collectionId, itemId } = req.params;
+    const { fieldData, isDraft, isArchived, cmsLocaleId } = req.body;
+    
+    if (!collectionId) {
+      return res.status(400).json({ message: 'Collection ID is required' });
+    }
+    
+    if (!itemId) {
+      return res.status(400).json({ message: 'Item ID is required' });
+    }
+    
+    if (!fieldData || typeof fieldData !== 'object') {
+      return res.status(400).json({ message: 'Field data is required and must be an object' });
+    }
+    
+    const webflowToken = getEffectiveWebflowToken(req);
+    if (!webflowToken) {
+      return res.status(400).json({ message: 'No Webflow token available' });
+    }
+    
+    const client = createWebflowAPIClient(webflowToken);
+    
+    console.log(`Updating item: /beta/collections/${collectionId}/items/${itemId}`);
+    console.log(`Field data:`, JSON.stringify(fieldData, null, 2));
+    
+    // Prepare the request body based on Webflow API v2 Beta specs
+    const requestBody: any = { fieldData };
+    
+    // Add optional parameters if they are provided
+    if (isDraft !== undefined) {
+      requestBody.isDraft = isDraft;
+    }
+    
+    if (isArchived !== undefined) {
+      requestBody.isArchived = isArchived;
+    }
+    
+    if (cmsLocaleId) {
+      requestBody.cmsLocaleId = cmsLocaleId;
+    }
+    
+    // Use the v2 PATCH endpoint for updating individual items
+    const response = await client.patch(`/beta/collections/${collectionId}/items/${itemId}`, requestBody);
+    
+    // Return the updated item data
+    res.status(200).json({
+      message: 'Item updated successfully',
+      item: response.data
+    });
+  } catch (error: any) {
+    console.error('Error updating collection item:', error.message);
+    
+    // Forward the appropriate status code from the Webflow API
+    if (error.response?.status) {
+      return res.status(error.response.status).json({ 
+        message: 'Error updating collection item', 
+        error: error.response?.data?.message || error.message 
+      });
+    }
+    
+    res.status(500).json({ message: 'Error updating collection item', error: error.message });
+  }
+};
+
 // Get custom code for a specific page
 const getPageCustomCode = async (req: Request, res: Response) => {
   try {
@@ -820,6 +928,8 @@ export {
   publishSite,
   getSites,
   getCollectionItems,
+  getCollectionItem,
+  updateCollectionItem,
   getPageCustomCode,
   users
 }; 
