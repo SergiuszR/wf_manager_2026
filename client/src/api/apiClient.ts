@@ -9,6 +9,29 @@ const apiClient = axios.create({
   }
 });
 
+// Add request interceptor to handle Vercel deployment
+apiClient.interceptors.request.use(config => {
+  // Log requests in development
+  if (import.meta.env.DEV) {
+    console.log('API Request:', config.method?.toUpperCase(), config.url);
+  }
+  return config;
+});
+
+// Add response interceptor to handle errors
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    // Log error details to help diagnose issues
+    console.error('API Error:', error.message);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Add authorization header with JWT token
 export const setAuthToken = (token: string | null) => {
   if (token) {

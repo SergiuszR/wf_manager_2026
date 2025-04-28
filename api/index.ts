@@ -7,7 +7,16 @@ import helmet from 'helmet';
 import authRoutes from '../server/src/routes/auth';
 import webflowRoutes from '../server/src/routes/webflow';
 
+// Load environment variables
+// Note: For Vercel deployment, make sure to add these environment variables in the Vercel dashboard:
+// - SUPABASE_URL
+// - SUPABASE_SERVICE_ROLE_KEY
+// - Any other environment variables used by the app
 dotenv.config();
+
+// Explicitly set production mode for Vercel environment
+process.env.NODE_ENV = 'production';
+process.env.PRODUCTION_MODE = 'true';
 
 const app = express();
 
