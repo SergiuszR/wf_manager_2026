@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Pages from './pages/Pages';
 import Collections from './pages/Collections';
 import Assets from './pages/Assets';
+import ActivityLogs from './pages/ActivityLogs';
 import CMSEditor from './pages/CMSEditor';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
@@ -83,6 +84,17 @@ const App: React.FC = () => {
                   <PrivateRoute>
                     <Layout>
                       <Assets />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              
+              <Route
+                path="/activity"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <ActivityLogs />
                     </Layout>
                   </PrivateRoute>
                 }

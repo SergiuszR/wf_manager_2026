@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { webflowAPI } from '../api/apiClient';
 import axios from 'axios';
@@ -8,6 +8,7 @@ import { Project } from './Dashboard';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { recordActivity } from '../services/activityLogService';
 
 // Extend the User type locally to include webflowToken
 interface UserWithWebflowToken extends SupabaseUser {
@@ -133,6 +134,10 @@ const Assets: React.FC = () => {
   const [altTextLoading, setAltTextLoading] = useState(false);
   const [altTextError, setAltTextError] = useState('');
   const [bulkUploadFiles, setBulkUploadFiles] = useState<BulkUploadFile[]>([]);
+  const [inlineEditingAssetId, setInlineEditingAssetId] = useState<string | null>(null);
+  const [inlineAltTextInput, setInlineAltTextInput] = useState('');
+  const [inlineAltTextLoading, setInlineAltTextLoading] = useState(false);
+  const [inlineAltTextError, setInlineAltTextError] = useState('');
 
   // Fetch sites on component mount or when selectedProject changes
   useEffect(() => {
@@ -407,6 +412,7 @@ const Assets: React.FC = () => {
     const handleSaveAltText = async () => {
       setAltTextLoading(true);
       setAltTextError('');
+      
       try {
         await webflowAPI.updateAssetAltText(
           asset.id, 
@@ -414,6 +420,19 @@ const Assets: React.FC = () => {
           selectedProject?.token,
           asset.name
         );
+        
+        // Log the activity
+        if (selectedProject?.id) {
+          await recordActivity(
+            selectedProject.id,
+            'update_alt_text',
+            'asset',
+            asset.id,
+            { altText: asset.altText },
+            { altText: altTextInput.trim() }
+          );
+        }
+        
         // Update asset in state
         setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, altText: altTextInput.trim() } : a));
         setFilteredAssets(prev => prev.map(a => a.id === asset.id ? { ...a, altText: altTextInput.trim() } : a));
@@ -660,6 +679,14 @@ const Assets: React.FC = () => {
         await fetch(uploadUrl, { method: 'POST', body: s3Form });
         updatedFiles[i].progress = 80;
         setBulkUploadFiles([...updatedFiles]);
+        
+        // Prepare asset data for logging
+        const assetData = {
+          fileName: f.file.name,
+          fileSize: f.file.size,
+          fileType: f.file.type
+        };
+        
         if (f.altText && assetId) {
           await webflowAPI.updateAssetAltText(
             assetId, 
@@ -667,7 +694,32 @@ const Assets: React.FC = () => {
             selectedProject.token,
             f.file.name
           );
+          
+          // Log alt text setting activity if altText is provided
+          if (selectedProject?.id) {
+            await recordActivity(
+              selectedProject.id,
+              'update_alt_text',
+              'asset',
+              assetId,
+              null,
+              { ...assetData, altText: f.altText }
+            );
+          }
         }
+        
+        // Log upload activity
+        if (selectedProject?.id && assetId) {
+          await recordActivity(
+            selectedProject.id,
+            'upload_asset',
+            'asset',
+            assetId,
+            null,
+            assetData
+          );
+        }
+        
         updatedFiles[i].progress = 100;
         updatedFiles[i].success = true;
         updatedFiles[i].error = '';
@@ -857,6 +909,55 @@ const Assets: React.FC = () => {
     }
   `;
 
+  const handleInlineEditAlt = (asset: WebflowAsset, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Prevent opening the asset modal
+    setInlineEditingAssetId(asset.id);
+    setInlineAltTextInput(asset.altText || '');
+    setInlineAltTextError('');
+  };
+
+  const handleInlineSaveAltText = async (asset: WebflowAsset, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Prevent opening the asset modal
+    setInlineAltTextLoading(true);
+    setInlineAltTextError('');
+    
+    try {
+      await webflowAPI.updateAssetAltText(
+        asset.id, 
+        inlineAltTextInput.trim(),
+        selectedProject?.token,
+        asset.name
+      );
+      
+      // Log the activity
+      if (selectedProject?.id) {
+        await recordActivity(
+          selectedProject.id,
+          'update_alt_text',
+          'asset',
+          asset.id,
+          { altText: asset.altText },
+          { altText: inlineAltTextInput.trim() }
+        );
+      }
+      
+      // Update asset in state
+      setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, altText: inlineAltTextInput.trim() } : a));
+      setFilteredAssets(prev => prev.map(a => a.id === asset.id ? { ...a, altText: inlineAltTextInput.trim() } : a));
+      setInlineEditingAssetId(null);
+    } catch (err: any) {
+      setInlineAltTextError(err?.response?.data?.message || 'Failed to update alt text');
+    } finally {
+      setInlineAltTextLoading(false);
+    }
+  };
+
+  const handleInlineCancelEditAlt = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation(); // Prevent opening the asset modal
+    setInlineEditingAssetId(null);
+    setInlineAltTextError('');
+  };
+
   if (!user) return null;
   if (projects.length === 0) {
     return <div>Please add a project to access this section.</div>;
@@ -867,6 +968,7 @@ const Assets: React.FC = () => {
 
   return (
     <PageContainer>
+      <EditButtonHoverStyle />
       <ProjectSelectorContainer>
         <ProjectAccentBar />
         <ProjectLabel htmlFor="project-select">Project</ProjectLabel>
@@ -980,7 +1082,6 @@ const Assets: React.FC = () => {
           
           <AssetsGrid>
             {filteredAssets.map(asset => (
-              console.log('Asset card altText:', asset.altText),
               <AssetCard key={asset.id} onClick={() => openAssetModal(asset)}>
                 {asset.isImage ? (
                   <AssetThumbnail>
@@ -994,9 +1095,43 @@ const Assets: React.FC = () => {
                 <AssetInfo>
                   <AssetName title={asset.name}>{asset.name}</AssetName>
                   <AssetFileName title={asset.fileName}>{asset.fileName}</AssetFileName>
-                  <AssetAltText title={getDisplayAltText(asset.altText) || "No alt text"}>
-                    Alt: {getDisplayAltText(asset.altText) || <EmptyAltText>Not set</EmptyAltText>}
-                  </AssetAltText>
+                  <AssetAltTextContainer>
+                    {inlineEditingAssetId === asset.id ? (
+                      <>
+                        <InlineAltTextInput
+                          type="text"
+                          value={inlineAltTextInput}
+                          onChange={e => setInlineAltTextInput(e.target.value)}
+                          disabled={inlineAltTextLoading}
+                          maxLength={255}
+                          autoFocus
+                          onClick={e => e.stopPropagation()}
+                        />
+                        <InlineActionButton 
+                          primary 
+                          onClick={e => handleInlineSaveAltText(asset, e)} 
+                          disabled={inlineAltTextLoading || inlineAltTextInput.trim() === (asset.altText || '').trim()}
+                        >
+                          {inlineAltTextLoading ? 'Saving...' : 'Save'}
+                        </InlineActionButton>
+                        <InlineActionButton onClick={handleInlineCancelEditAlt} disabled={inlineAltTextLoading}>
+                          Cancel
+                        </InlineActionButton>
+                        {inlineAltTextError && <InlineAltTextError>{inlineAltTextError}</InlineAltTextError>}
+                      </>
+                    ) : (
+                      <>
+                        <AssetAltText title={getDisplayAltText(asset.altText) || "No alt text"}>
+                          Alt: {getDisplayAltText(asset.altText) || <EmptyAltText>Not set</EmptyAltText>}
+                        </AssetAltText>
+                        {asset.isImage && (
+                          <EditAltButton onClick={e => handleInlineEditAlt(asset, e)}>
+                            Edit
+                          </EditAltButton>
+                        )}
+                      </>
+                    )}
+                  </AssetAltTextContainer>
                   <AssetMeta>
                     <span>{formatFileSize(asset.fileSize)}</span>
                     <span>{formatDate(asset.lastUpdated)}</span>
@@ -1186,6 +1321,7 @@ const AssetCard = styled.div`
   overflow: hidden;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   cursor: pointer;
+  position: relative;
   
   &:hover {
     transform: translateY(-3px);
@@ -1746,6 +1882,99 @@ const FileListItem = styled.div`
   .progress {
     width: 60px;
     color: var(--text-secondary);
+  }
+`;
+
+const AssetAltTextContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  position: relative;
+  min-height: 26px;
+`;
+
+const EditAltButton = styled.button`
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0 8px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  height: 20px;
+  display: none;
+  margin-left: 4px;
+  
+  &:hover {
+    background-color: var(--hover-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+`;
+
+const InlineAltTextInput = styled.input`
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  min-width: 0;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+`;
+
+const InlineActionButton = styled.button<{ primary?: boolean }>`
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  
+  ${props => props.primary ? `
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    
+    &:hover:not(:disabled) {
+      background-color: var(--primary-dark);
+    }
+  ` : `
+    background-color: transparent;
+    color: var(--text-secondary);
+    
+    &:hover:not(:disabled) {
+      background-color: var(--hover-color);
+      color: var(--primary-color);
+    }
+  `}
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const InlineAltTextError = styled.div`
+  color: var(--error-color);
+  font-size: 0.7rem;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+// Style for showing edit button on hover
+const EditButtonHoverStyle = createGlobalStyle`
+  ${AssetCard}:hover ${EditAltButton} {
+    display: block;
   }
 `;
 

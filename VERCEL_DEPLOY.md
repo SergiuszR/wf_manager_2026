@@ -3,6 +3,40 @@
 ## Overview
 This document provides instructions for deploying the Webflow 2026 app on Vercel. The app consists of a React frontend and a serverless API that communicates with Webflow's API.
 
+## Important Update: Complete Rewrite of API Logic
+To resolve dependency issues on Vercel, we've made a significant change to the application:
+
+1. The API endpoint (/api/index.ts) now contains all the necessary authentication, user management, and basic Webflow API functionality directly inlined - **without** relying on imports from the server directory.
+
+2. This bypasses the dependency issues with compiled TypeScript code and ensures all the necessary code is available in the API function.
+
+## Implemented API Endpoints
+
+The following Webflow API endpoints are now available:
+
+### Authentication
+- `/api/auth/authenticate` - Authenticate with Webflow token
+- `/api/auth/profile` - Get user profile
+
+### Webflow Data
+- `/api/webflow/sites` - Get all Webflow sites
+- `/api/webflow/pages` - Get all pages from all sites
+- `/api/webflow/pages/:pageId` - Get details about a specific page (requires siteId query parameter)
+- `/api/webflow/collections` - Get all collections from all sites
+- `/api/webflow/collections/:collectionId` - Get collection details
+- `/api/webflow/collections/:collectionId/items` - Get collection items
+
+### Assets (New)
+- `/api/webflow/sites/:siteId/assets` - Get all assets for a site
+- `/api/webflow/assets/:assetId` - Get details about a specific asset
+- `/api/webflow/sites/:siteId/assets` (POST) - Create a new asset (get upload URL)
+- `/api/webflow/sites/:siteId/assets/csv` - Download assets as CSV
+- `/api/webflow/assets/:assetId` (PATCH) - Update asset properties (e.g., alt text)
+
+### Utility
+- `/api/health` - Check API health
+- `/api/debug` - Show environment configuration
+
 ## Deployment Steps
 
 ### 1. Environment Variables
@@ -15,15 +49,13 @@ Set the following environment variables in your Vercel project settings:
 - `JWT_SECRET` - Secret key for JWT token generation (can be any secure random string)
 
 ### 2. Build Settings
-The project is configured to build both the client and API components automatically with the following build command:
+The project is configured to build all components with the following build command (already set in vercel.json):
 ```
-cd client && npm install && npm run build && cd ../api && npm install
+cd server && npm install && npm run build && cd ../client && npm install && npm run build && cd ../api && npm install
 ```
-
-This is already set in vercel.json.
 
 ### 3. API Dependencies
-The following packages are required for the API to function correctly:
+All required API dependencies are included directly in the api/package.json file:
 - express
 - cors
 - helmet
@@ -34,8 +66,8 @@ The following packages are required for the API to function correctly:
 - dotenv
 - mongoose
 - @supabase/supabase-js
-
-These are all included in the api/package.json file.
+- bcrypt
+- webflow-api
 
 ### 4. Deployment Troubleshooting
 
@@ -50,6 +82,23 @@ If you encounter issues after deployment:
 4. **Logs**: Check the Vercel deployment logs for any errors about missing dependencies.
 
 5. **Browser Dev Tools**: Check the browser's developer console for API request errors.
+
+## Debugging Assets Issues
+
+If you're still experiencing issues with the Assets component:
+
+1. **Site Verification**: The API now verifies if the site exists before attempting to fetch assets. Check your Vercel logs for messages with the `[ASSETS]` prefix to see if site verification is successful.
+
+2. **Beta API Limitations**: Webflow's Asset API is still in beta and has some limitations. Some sites might not support assets or may have restricted permissions.
+
+3. **Token Permissions**: Ensure your Webflow API token has the necessary permissions for accessing assets. It may need the `assets.read` scope.
+
+4. **Network Tab**: Use your browser's Network tab to investigate API calls:
+   - Check if the request to `/api/webflow/sites/:siteId/assets` is actually being made
+   - Look for any error responses and their content
+   - Verify that the site ID being passed is correct
+
+5. **Testing with Mockup Data**: If needed, you can uncomment the mockup data section in the API code to test if the frontend renders correctly with static data.
 
 ## Common Issues
 

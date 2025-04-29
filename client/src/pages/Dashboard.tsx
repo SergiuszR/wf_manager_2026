@@ -13,6 +13,150 @@ export interface Project {
 
 const ADMIN_EMAIL = 'sergiuszrozycki@icloud.com';
 
+// --- Add new/updated styled components for redesign (move above Dashboard component) ---
+const FormCard = styled.div`
+  background: var(--background-light);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  margin-bottom: 2.5rem;
+  max-width: 500px;
+`;
+const FormTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+`;
+const FormHelper = styled.div`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+`;
+const ShowHideButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+const Form = styled.form`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+`;
+const Input = styled.input`
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+`;
+const SubmitButton = styled.button`
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  &:hover {
+    background-color: var(--hover-color);
+  }
+  &:disabled {
+    background-color: var(--disabled-color);
+    cursor: not-allowed;
+  }
+`;
+const ProjectGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+`;
+const ProjectCard = styled.div<{ $selected?: boolean }>`
+  display: flex;
+  align-items: center;
+  background: var(--background-light);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  border: 2px solid ${p => p.$selected ? 'var(--primary-color)' : 'transparent'};
+  box-shadow: ${p => p.$selected ? '0 0 0 2px var(--primary-color-light, #b3d4fc)' : 'var(--box-shadow)'};
+  transition: border 0.18s, box-shadow 0.18s;
+  position: relative;
+  &:hover {
+    border: 2px solid var(--primary-color-light, #b3d4fc);
+  }
+`;
+const ProjectAvatar = styled.div`
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-right: 1.25rem;
+`;
+const ProjectInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+const ProjectTokenRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+const ProjectToken = styled.span`
+  font-size: 0.92rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  font-family: 'SFMono-Regular', monospace;
+`;
+const ProjectName = styled.span`
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+`;
+const ProjectActions = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-left: 1.25rem;
+`;
+const SelectedMark = styled.span`
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  font-weight: 700;
+`;
+const EmptyState = styled.div`
+  grid-column: 1/-1;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: 2.5rem 0 1.5rem 0;
+`;
+const EmptyIcon = styled.div`
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+`;
+
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -29,6 +173,9 @@ const Dashboard: React.FC = () => {
   const [toggling, setToggling] = useState<string | null>(null);
 
   const { selectedProject, setSelectedProject, refreshProjects } = useProjectContext();
+
+  // --- Regular user dashboard redesign ---
+  const [showTokenId, setShowTokenId] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -177,46 +324,87 @@ const Dashboard: React.FC = () => {
         <LogoutButton onClick={logout}>Log Out</LogoutButton>
       </Header>
       <SectionTitle>Your Webflow Projects</SectionTitle>
-      <Form onSubmit={addProject}>
-        <Input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Project Name"
-          required
-        />
-        <Input
-          value={token}
-          onChange={e => setToken(e.target.value)}
-          placeholder="Webflow Token"
-          required
-        />
-        <SubmitButton type="submit" disabled={loading}>
-          {loading ? 'Adding...' : 'Add Project'}
-        </SubmitButton>
-      </Form>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-      <ProjectList>
-        {projects.map(p => (
-          <ProjectItem
-            key={p.id}
-            style={selectedProject && selectedProject.id === p.id ? {
-              border: '2px solid var(--primary-color)',
-              background: 'var(--hover-color)',
-              boxShadow: '0 0 0 2px var(--primary-color-light, #b3d4fc)',
-              position: 'relative',
-            } : {}}
-            onClick={() => setSelectedProject(p)}
+      <FormCard>
+        <FormTitle>Add New Project</FormTitle>
+        <Form onSubmit={(e: React.FormEvent<HTMLFormElement>) => addProject(e)}>
+          <Input
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+            placeholder="Project Name"
+            required
+          />
+          <Input
+            value={token}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToken(e.target.value)}
+            placeholder="Webflow Token"
+            required
+            type={showTokenId === 'new' ? 'text' : 'password'}
+            autoComplete="off"
+          />
+          <ShowHideButton
+            type="button"
+            onClick={() => setShowTokenId(showTokenId === 'new' ? null : 'new')}
+            tabIndex={-1}
           >
-            <ProjectName>{p.name}</ProjectName>
-            <ProjectToken>{p.token}</ProjectToken>
-            {selectedProject && selectedProject.id === p.id && (
-              <span style={{ color: 'var(--primary-color)', fontWeight: 700, fontSize: '1.2em', marginLeft: 8 }}>✓</span>
-            )}
-            <DeleteButton onClick={e => { e.stopPropagation(); deleteProject(p.id); }}>Delete</DeleteButton>
-          </ProjectItem>
-        ))}
-        {projects.length === 0 && <EmptyText>No projects yet. Add your first Webflow project above.</EmptyText>}
-      </ProjectList>
+            {showTokenId === 'new' ? 'Hide' : 'Show'}
+          </ShowHideButton>
+          <SubmitButton type="submit" disabled={loading}>
+            {loading ? 'Adding...' : 'Add Project'}
+          </SubmitButton>
+        </Form>
+        <FormHelper>Your Webflow API token is kept private and only used for publishing.</FormHelper>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+      </FormCard>
+      <ProjectGrid>
+        {projects.length === 0 && (
+          <EmptyState>
+            <EmptyIcon>📂</EmptyIcon>
+            <div>No projects yet. Add your first Webflow project above.</div>
+          </EmptyState>
+        )}
+        {projects.map(p => {
+          const isSelected = !!(selectedProject && selectedProject.id === p.id);
+          const maskedToken = p.token.length > 8
+            ? `${p.token.slice(0, 4)}••••••••${p.token.slice(-4)}`
+            : '••••••••';
+          return (
+            <ProjectCard
+              key={p.id}
+              $selected={isSelected}
+              onClick={() => setSelectedProject(p)}
+              tabIndex={0}
+              title={isSelected ? 'Selected project' : 'Click to select'}
+            >
+              <ProjectAvatar>{p.name?.[0]?.toUpperCase() || '?'}</ProjectAvatar>
+              <ProjectInfo>
+                <ProjectName>{p.name}</ProjectName>
+                <ProjectTokenRow>
+                  <ProjectToken>
+                    {showTokenId === p.id ? p.token : maskedToken}
+                  </ProjectToken>
+                  <ShowHideButton
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setShowTokenId(showTokenId === p.id ? null : p.id); }}
+                    tabIndex={-1}
+                  >
+                    {showTokenId === p.id ? 'Hide' : 'Show'}
+                  </ShowHideButton>
+                </ProjectTokenRow>
+              </ProjectInfo>
+              <ProjectActions>
+                {isSelected && <SelectedMark>✓</SelectedMark>}
+                <DeleteButton
+                  type="button"
+                  title="Delete project"
+                  onClick={e => { e.stopPropagation(); deleteProject(p.id); }}
+                >
+                  🗑
+                </DeleteButton>
+              </ProjectActions>
+            </ProjectCard>
+          );
+        })}
+      </ProjectGrid>
       {!hasProjects && <div style={{ marginTop: 24, color: 'var(--text-secondary)' }}>Add your first project to unlock Pages, Collections, and Assets features.</div>}
     </DashboardContainer>
   );
@@ -267,97 +455,10 @@ const SectionTitle = styled.h2`
   padding-bottom: 0.75rem;
 `;
 
-const Form = styled.form`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 2.5rem;
-`;
-
-const Input = styled.input`
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  font-size: 0.875rem;
-  color: var(--text-primary);
-`;
-
-const SubmitButton = styled.button`
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: var(--hover-color);
-  }
-  
-  &:disabled {
-    background-color: var(--disabled-color);
-    cursor: not-allowed;
-  }
-`;
-
 const ErrorMessage = styled.p`
   color: var(--error-color);
   font-size: 0.875rem;
   margin-bottom: 1rem;
-`;
-
-const ProjectList = styled.ul`
-  list-style: none;
-  padding: 0;
-`;
-
-const ProjectItem = styled.li`
-  background-color: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-`;
-
-const ProjectName = styled.span`
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-`;
-
-const ProjectToken = styled.span`
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
-`;
-
-const DeleteButton = styled.button`
-  background-color: var(--error-color);
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: var(--hover-color);
-  }
-`;
-
-const EmptyText = styled.p`
-  text-align: center;
-  color: var(--text-tertiary);
-  font-style: italic;
 `;
 
 const UserIdText = styled.div`
@@ -401,6 +502,18 @@ const UserTable = styled.table`
   th {
     background: var(--background-light);
     font-weight: 600;
+  }
+`;
+
+const DeleteButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--error-color);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  &:hover {
+    text-decoration: underline;
   }
 `;
 

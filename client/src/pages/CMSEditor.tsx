@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactElement, useRef } from 'react';
+import React, { useState, useEffect, useRef, ReactElement } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
@@ -45,6 +45,8 @@ import {
 // Add import for react-quill
 // import ReactQuill from 'react-quill';
 // import 'react-quill/dist/quill.snow.css';
+// Add the new import for activity logging
+import { recordActivity } from '../services/activityLogService';
 
 // Add these styled components at the top, before the CMSEditor component
 const CmsEditorContainer = styled.div`
@@ -3111,6 +3113,30 @@ const CMSEditor = (): ReactElement => {
                             updatedFieldEdits[field.slug] = null;
                           }
                         });
+
+                        // Log the activity
+                        if (selectedProject?.id && itemDetailModal.item) {
+                          const itemId = itemDetailModal.item.id || itemDetailModal.item._id;
+                          const itemName = 
+                            itemDetailModal.item.name || 
+                            itemDetailModal.item.title || 
+                            `Item ${itemId.substring(0, 8)}`;
+                          
+                          await recordActivity(
+                            selectedProject.id,
+                            'edit_cms_item',
+                            'cms_item',
+                            itemId,
+                            itemDetailModal.itemDetails, // Previous data
+                            { 
+                              ...itemDetailModal.itemDetails, 
+                              ...updatedFieldEdits,
+                              _collection_id: itemDetailModal.collection.id,
+                              _collection_name: itemDetailModal.collection.name 
+                            } // New data with updates
+                          );
+                        }
+
                         // Call Webflow API to update the item
                         await webflowAPI.updateCollectionItem(
                           itemDetailModal.collection.id,

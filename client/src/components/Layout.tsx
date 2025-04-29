@@ -7,6 +7,20 @@ import axios from 'axios';
 import { format, addMinutes, addHours, addDays } from 'date-fns';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useProjectContext } from '../contexts/ProjectContext';
+import {
+  ModalOverlay,
+  ModalContent as WFModalContent,
+  ModalHeader as WFModalHeader,
+  ModalTitle as WFModalTitle,
+  CloseButton as WFCloseButton,
+  ModalBody as WFModalBody,
+  ModalFooter as WFModalFooter,
+  LoadingContainer,
+  LoadingText,
+  ErrorContainer,
+  ModalDescription,
+  ModalActions,
+} from './ui/WebflowStyledComponents';
 
 interface NavItemProps {
   $active?: boolean;
@@ -315,11 +329,11 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
     return (
       <Modal onClick={closePublishModal}>
-        <ModalContent onClick={(e) => e.stopPropagation()}>
-          <ModalHeader>
+        <WFModalContent onClick={(e) => e.stopPropagation()}>
+          <WFModalHeader>
             <h2>Publish Site</h2>
-            <CloseButton onClick={closePublishModal}>×</CloseButton>
-          </ModalHeader>
+            <WFCloseButton onClick={closePublishModal}>×</WFCloseButton>
+          </WFModalHeader>
           
           {publishState.isSuccess ? (
             <SuccessMessage>
@@ -330,7 +344,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             </SuccessMessage>
           ) : (
             <>
-              <ModalBody>
+              <WFModalBody>
                 {publishState.error && (
                   <ErrorMessage>
                     <strong>Error:</strong> {publishState.error}
@@ -415,9 +429,9 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                     ? 'This will schedule the publication of your site at the specified time.' 
                     : 'This will publish your site immediately.'}
                 </PublishNote>
-              </ModalBody>
+              </WFModalBody>
               
-              <ModalFooter>
+              <WFModalFooter>
                 <Button onClick={closePublishModal}>
                   Cancel
                 </Button>
@@ -432,10 +446,10 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                     'Publish Now'
                   )}
                 </Button>
-              </ModalFooter>
+              </WFModalFooter>
             </>
           )}
-        </ModalContent>
+        </WFModalContent>
       </Modal>
     );
   };
@@ -575,7 +589,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     );
   };
 
-  // Project Picker Modal
+  // Project Picker Modal (refactored)
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [tempSelected, setTempSelected] = useState<string | null>(null);
@@ -632,38 +646,33 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   };
 
   const ProjectPickerModal = () => (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'rgba(0,0,0,0.18)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <div style={{
-        background: 'var(--background-light)', borderRadius: 18, boxShadow: 'var(--box-shadow)',
-        minWidth: 340, maxWidth: 420, width: '90vw', padding: '2.5rem 2rem',
-        display: 'flex', flexDirection: 'column', alignItems: 'stretch',
-      }}>
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: '1.5rem', color: 'var(--primary-color)', marginBottom: 4 }}>Select a Project</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Choose which Webflow project you want to manage.</div>
-        </div>
-        <div style={{ minHeight: 120, marginBottom: 24 }}>
+    <ModalOverlay>
+      <WFModalContent style={{ maxWidth: 420, minWidth: 340, width: '90vw' }}>
+        <WFModalHeader>
+          <WFModalTitle>Select a Project</WFModalTitle>
+          <WFCloseButton onClick={() => setShowProjectPicker(false)} aria-label="Close">×</WFCloseButton>
+        </WFModalHeader>
+        <WFModalBody>
+          <ModalDescription>Choose which Webflow project you want to manage.</ModalDescription>
           {projectsLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <LoadingContainer>
               <Spinner />
-              <div style={{ marginTop: 12, color: 'var(--text-secondary)' }}>Loading projects...</div>
-            </div>
+              <LoadingText>Loading projects...</LoadingText>
+            </LoadingContainer>
           ) : projects.length === 0 ? (
-            <div style={{ color: 'var(--error-color)', textAlign: 'center', fontWeight: 600 }}>
-              No projects found. Please add a project below.
-            </div>
+            <ErrorContainer>
+              <span style={{ fontSize: '2rem', marginBottom: 8 }}>📂</span>
+              <div>No projects found. Please add a project below.</div>
+            </ErrorContainer>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
               {projects.map((p) => {
                 const checked = tempSelected === String(p.id);
                 return (
                   <label
                     key={p.id}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '0.75rem 1rem',
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '0.85rem 1.1rem',
                       borderRadius: 10, border: checked ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
                       background: checked ? 'var(--hover-color)' : 'var(--background-main)',
                       cursor: 'pointer',
@@ -673,6 +682,10 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                       boxShadow: checked ? '0 0 0 2px var(--primary-color-light, #b3d4fc)' : 'none',
                     }}
                   >
+                    <span style={{
+                      width: 32, height: 32, borderRadius: '50%', background: 'var(--secondary-color)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary-color)'
+                    }}>{p.name?.[0]?.toUpperCase() || '?'}</span>
                     <input
                       type="radio"
                       name="project"
@@ -687,31 +700,33 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               })}
             </div>
           )}
-        </div>
-        <button
-          onClick={handleContinue}
-          disabled={!tempSelected}
-          style={{
-            background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: 8,
-            padding: '0.75rem 0', fontWeight: 600, fontSize: '1.1rem', cursor: tempSelected ? 'pointer' : 'not-allowed',
-            opacity: tempSelected ? 1 : 0.6, transition: 'opacity 0.15s',
-            marginBottom: 12,
-          }}
-        >
-          Continue
-        </button>
-        <button
-          onClick={() => setShowNewProjectModal(true)}
-          style={{
-            background: 'var(--secondary-color)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)', borderRadius: 8,
-            padding: '0.75rem 0', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer',
-            marginBottom: 0,
-          }}
-        >
-          + New Project
-        </button>
-      </div>
-    </div>
+        </WFModalBody>
+        <WFModalFooter>
+          <button
+            onClick={handleContinue}
+            disabled={!tempSelected}
+            style={{
+              background: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '0.75rem 0', fontWeight: 600, fontSize: '1.1rem', cursor: tempSelected ? 'pointer' : 'not-allowed',
+              opacity: tempSelected ? 1 : 0.6, transition: 'opacity 0.15s',
+              marginRight: 8, minWidth: 120
+            }}
+          >
+            Continue
+          </button>
+          <button
+            onClick={() => setShowNewProjectModal(true)}
+            style={{
+              background: 'var(--secondary-color)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)', borderRadius: 8,
+              padding: '0.75rem 0', fontWeight: 600, fontSize: '1.05rem', cursor: 'pointer',
+              minWidth: 120
+            }}
+          >
+            + New Project
+          </button>
+        </WFModalFooter>
+      </WFModalContent>
+    </ModalOverlay>
   );
 
   // Mini modal rendered at top level
@@ -836,6 +851,17 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               )
             ) : (
               <DisabledNavItem>Assets <PremiumBadge>Premium</PremiumBadge></DisabledNavItem>
+            )}
+          </NavItem>
+          <NavItem $active={isActive('/activity')}>
+            {user?.user_metadata?.premium ? (
+              selectedProject ? (
+                <StyledLink to="/activity">Activity Logs</StyledLink>
+              ) : (
+                <DisabledNavItem title="Select a project to continue.">Activity Logs</DisabledNavItem>
+              )
+            ) : (
+              <DisabledNavItem>Activity Logs <PremiumBadge>Premium</PremiumBadge></DisabledNavItem>
             )}
           </NavItem>
           <ActionButton
