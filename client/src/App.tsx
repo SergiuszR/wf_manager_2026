@@ -6,7 +6,6 @@ import { ProjectProvider } from './contexts/ProjectContext';
 import TokenEntry from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Pages from './pages/Pages';
-import Collections from './pages/Collections';
 import Assets from './pages/Assets';
 import ActivityLogs from './pages/ActivityLogs';
 import CMSEditor from './pages/CMSEditor';
@@ -56,16 +55,16 @@ const App: React.FC = () => {
                 }
               />
               
-              <Route
+              {/* <Route
                 path="/collections"
                 element={
                   <PrivateRoute>
                     <Layout>
-                      <Collections />
+                      <Collec tions />
                     </Layout>
                   </PrivateRoute>
                 }
-              />
+              /> */}
               
               <Route
                 path="/cms-editor"

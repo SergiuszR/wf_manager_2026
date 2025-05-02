@@ -9,7 +9,6 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useProjectContext } from '../contexts/ProjectContext';
 import {
   ModalOverlay,
-  ModalContent as WFModalContent,
   ModalHeader as WFModalHeader,
   ModalTitle as WFModalTitle,
   CloseButton as WFCloseButton,
@@ -21,6 +20,8 @@ import {
   ModalDescription,
   ModalActions,
 } from './ui/WebflowStyledComponents';
+import { webflowAPI } from '../api/apiClient';
+import { recordActivity } from '../services/activityLogService';
 
 interface NavItemProps {
   $active?: boolean;
@@ -76,11 +77,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     const fetchSites = async () => {
       if (!token || !user?.webflowToken) return;
       try {
-        const response = await axios.get('/api/webflow/sites', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const response = await webflowAPI.getSites(user.webflowToken);
         if (response.data && Array.isArray(response.data.sites)) {
           const sites = response.data.sites.map((site: any) => ({
             id: site.id,
@@ -130,12 +127,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     }
     try {
       console.log('[PublishModal] Fetching sites...');
-      const response = await axios.get('/api/webflow/sites', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-Webflow-Token': selectedProject.token
-        }
-      });
+      const response = await webflowAPI.getSites(selectedProject.token);
       const sites = response.data.sites || [];
       if (sites.length > 0) {
         // Only use the first site, as each token is for one site
@@ -204,18 +196,6 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     });
   };
 
-  // Handle site selection change
-  const handleSiteChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const siteId = e.target.value;
-    const site = publishState.sites.find(s => s.id === siteId);
-    
-    setPublishState({
-      ...publishState,
-      selectedSiteId: siteId,
-      selectedSiteName: site ? site.name : ''
-    });
-  };
-
   // Handle publishing the site
   const handlePublish = async () => {
     if (!publishState.selectedSiteId) {
@@ -238,23 +218,16 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       error: null
     });
     try {
-      const publishData: {
-        siteId: string;
-        domains?: string[];
-        scheduledTime?: string;
-      } = {
-        siteId: publishState.selectedSiteId
-      };
-      if (publishState.isScheduling && publishState.scheduledTime) {
-        publishData.scheduledTime = new Date(publishState.scheduledTime).toISOString();
-      }
-      const response = await axios.post('/api/webflow/sites/publish', publishData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-Webflow-Token': selectedProject.token,
-          'Content-Type': 'application/json'
-        }
-      });
+      const scheduledTime = publishState.isScheduling && publishState.scheduledTime 
+        ? new Date(publishState.scheduledTime).toISOString() 
+        : undefined;
+      
+      const response = await webflowAPI.publishSite(
+        publishState.selectedSiteId,
+        scheduledTime,
+        selectedProject.token
+      );
+      
       if (publishState.isScheduling && publishState.scheduledTime) {
         const updatedSchedules = {
           ...publishState.scheduledPublishes,
@@ -268,6 +241,20 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           isSuccess: true,
           error: null
         }));
+        showToast('Publication scheduled successfully!', 'success');
+        // Log activity
+        recordActivity(
+          selectedProject.id,
+          'publish_site',
+          'site',
+          publishState.selectedSiteId,
+          null,
+          {
+            scheduledTime: publishState.scheduledTime,
+            siteName: publishState.selectedSiteName,
+            type: 'scheduled'
+          }
+        );
       } else {
         setPublishState({
           ...publishState,
@@ -275,6 +262,19 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           isSuccess: true,
           error: null
         });
+        showToast('Site published successfully!', 'success');
+        // Log activity
+        recordActivity(
+          selectedProject.id,
+          'publish_site',
+          'site',
+          publishState.selectedSiteId,
+          null,
+          {
+            siteName: publishState.selectedSiteName,
+            type: 'immediate'
+          }
+        );
       }
       setTimeout(() => {
         closePublishModal();
@@ -293,6 +293,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         isPublishing: false,
         error: errorMessage
       });
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -329,11 +330,11 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
     return (
       <Modal onClick={closePublishModal}>
-        <WFModalContent onClick={(e) => e.stopPropagation()}>
-          <WFModalHeader>
+        <ModalContent onClick={(e) => e.stopPropagation()}>
+          <ModalHeader>
             <h2>Publish Site</h2>
             <WFCloseButton onClick={closePublishModal}>×</WFCloseButton>
-          </WFModalHeader>
+          </ModalHeader>
           
           {publishState.isSuccess ? (
             <SuccessMessage>
@@ -344,7 +345,7 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
             </SuccessMessage>
           ) : (
             <>
-              <WFModalBody>
+              <ModalBody>
                 {publishState.error && (
                   <ErrorMessage>
                     <strong>Error:</strong> {publishState.error}
@@ -354,28 +355,17 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                   </ErrorMessage>
                 )}
                 
-                <FormGroup>
-                  <Label>Select Site:</Label>
-                  <Select 
-                    value={publishState.selectedSiteId} 
-                    disabled
-                  >
-                    {publishState.sites.map((site) => (
-                      <option key={site.id} value={site.id}>
-                        {site.name}
-                      </option>
-                    ))}
-                  </Select>
-                </FormGroup>
-                
                 <ScheduleToggle>
-                  <Label>
-                    <input
-                      type="checkbox"
-                      checked={publishState.isScheduling}
-                      onChange={toggleScheduling}
-                    />
-                    Schedule for later
+                  <Label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <ToggleSwitch>
+                      <input
+                        type="checkbox"
+                        checked={publishState.isScheduling}
+                        onChange={toggleScheduling}
+                      />
+                      <Slider />
+                    </ToggleSwitch>
+                    <span>Schedule for later</span>
                   </Label>
                 </ScheduleToggle>
                 
@@ -429,9 +419,9 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                     ? 'This will schedule the publication of your site at the specified time.' 
                     : 'This will publish your site immediately.'}
                 </PublishNote>
-              </WFModalBody>
+              </ModalBody>
               
-              <WFModalFooter>
+              <ModalFooter>
                 <Button onClick={closePublishModal}>
                   Cancel
                 </Button>
@@ -446,10 +436,10 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                     'Publish Now'
                   )}
                 </Button>
-              </WFModalFooter>
+              </ModalFooter>
             </>
           )}
-        </WFModalContent>
+        </ModalContent>
       </Modal>
     );
   };
@@ -647,12 +637,12 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
   const ProjectPickerModal = () => (
     <ModalOverlay>
-      <WFModalContent style={{ maxWidth: 420, minWidth: 340, width: '90vw' }}>
-        <WFModalHeader>
-          <WFModalTitle>Select a Project</WFModalTitle>
+      <ModalContent style={{ maxWidth: 420, minWidth: 340, width: '90vw' }}>
+        <ModalHeader>
+          <ModalTitle>Select a Project</ModalTitle>
           <WFCloseButton onClick={() => setShowProjectPicker(false)} aria-label="Close">×</WFCloseButton>
-        </WFModalHeader>
-        <WFModalBody>
+        </ModalHeader>
+        <ModalBody>
           <ModalDescription>Choose which Webflow project you want to manage.</ModalDescription>
           {projectsLoading ? (
             <LoadingContainer>
@@ -700,8 +690,8 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               })}
             </div>
           )}
-        </WFModalBody>
-        <WFModalFooter>
+        </ModalBody>
+        <ModalFooter>
           <button
             onClick={handleContinue}
             disabled={!tempSelected}
@@ -724,8 +714,8 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           >
             + New Project
           </button>
-        </WFModalFooter>
-      </WFModalContent>
+        </ModalFooter>
+      </ModalContent>
     </ModalOverlay>
   );
 
@@ -809,6 +799,13 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     </div>
   );
 
+  // Toast notification state and component
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   return (
     <AppContainer>
       {showProjectPicker && <ProjectPickerModal />}
@@ -826,13 +823,6 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               <StyledLink to="/pages">Pages</StyledLink>
             ) : (
               <DisabledNavItem title="Select a project to continue.">Pages</DisabledNavItem>
-            )}
-          </NavItem>
-          <NavItem $active={isActive('/collections')}>
-            {selectedProject ? (
-              <StyledLink to="/collections">Collections</StyledLink>
-            ) : (
-              <DisabledNavItem title="Select a project to continue.">Collections</DisabledNavItem>
             )}
           </NavItem>
           <NavItem $active={isActive('/cms-editor')}>
@@ -923,6 +913,11 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         {children}
       </MainContent>
       {renderPublishModal()}
+      {toast && (
+        <ToastContainer $type={toast.type}>
+          {toast.type === 'success' ? '✅' : '❌'} {toast.message}
+        </ToastContainer>
+      )}
     </AppContainer>
   );
 };
@@ -1107,12 +1102,12 @@ const ModalContent = styled.div`
   background-color: var(--background-light);
   border-radius: var(--border-radius);
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
-  width: 90%;
-  max-width: 500px;
+  width: 95%;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.2s ease-out;
-  
+  padding: 0.5rem 0.5rem 1.5rem 0.5rem;
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1265,34 +1260,6 @@ const ErrorMessage = styled.div`
   color: var(--error-color);
   border-radius: 4px;
   margin-top: 15px;
-`;
-
-const SiteSelector = styled.div`
-  margin-bottom: 15px;
-  
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-  
-  select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--background-light);
-    color: var(--text-primary);
-  }
-`;
-
-const NoSitesMessage = styled.div`
-  padding: 15px;
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #d97706;
-  border-radius: 4px;
-  text-align: center;
-  font-weight: 500;
 `;
 
 // New styled components for scheduled publishes
@@ -1545,6 +1512,70 @@ const DisabledNavItem = styled.span`
   cursor: not-allowed;
   display: inline-block;
   padding: 0.5em 0;
+`;
+
+// Add styled ToastContainer
+const ToastContainer = styled.div<{ $type: 'success' | 'error' }>`
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  z-index: 9999;
+  background: ${({ $type }) => $type === 'success' ? 'rgba(46, 204, 113, 0.95)' : 'rgba(231, 76, 60, 0.95)'};
+  color: #fff;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: toastIn 0.3s cubic-bezier(0.4,0,0.2,1);
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+// Add ToggleSwitch styled component
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+`;
+const Slider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 24px;
+  transition: .4s;
+  &:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .4s;
+  }
+  input:checked + & {
+    background-color: var(--primary-color);
+  }
+  input:checked + &:before {
+    transform: translateX(20px);
+  }
 `;
 
 export default Layout; 

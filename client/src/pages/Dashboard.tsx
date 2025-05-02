@@ -3,48 +3,21 @@ import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { FiStar, FiStar as StarIcon, FiSearch, FiPlus, FiX } from 'react-icons/fi';
+import { 
+  TopBar, AddButton, SearchBar, SearchInput, SortSelect, ModalOverlay, ModalContent, ModalHeader, ModalTitle, CloseButton, StarButton, ModalBody 
+} from '../components/ui/WebflowStyledComponents';
 
 export interface Project {
   id: string;
   name: string;
   token: string;
   created_at: string;
+  favorite?: boolean;
 }
 
 const ADMIN_EMAIL = 'sergiuszrozycki@icloud.com';
 
-// --- Add new/updated styled components for redesign (move above Dashboard component) ---
-const FormCard = styled.div`
-  background: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  padding: 2rem 1.5rem 1.5rem 1.5rem;
-  margin-bottom: 2.5rem;
-  max-width: 500px;
-`;
-const FormTitle = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--primary-color);
-`;
-const FormHelper = styled.div`
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 0.5rem;
-`;
-const ShowHideButton = styled.button`
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font-size: 0.85rem;
-  margin-left: 0.5rem;
-  cursor: pointer;
-  padding: 0 0.25rem;
-  &:hover {
-    text-decoration: underline;
-  }
-`;
 const Form = styled.form`
   display: flex;
   flex-wrap: wrap;
@@ -58,6 +31,15 @@ const Input = styled.input`
   border-radius: var(--border-radius);
   font-size: 0.875rem;
   color: var(--text-primary);
+`;
+const ShowHideButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.675rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
 `;
 const SubmitButton = styled.button`
   background-color: var(--primary-color);
@@ -77,6 +59,12 @@ const SubmitButton = styled.button`
     cursor: not-allowed;
   }
 `;
+const FormHelper = styled.div`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+`;
+
 const ProjectGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -101,6 +89,8 @@ const ProjectCard = styled.div<{ $selected?: boolean }>`
 const ProjectAvatar = styled.div`
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   background: var(--secondary-color);
   color: var(--primary-color);
@@ -110,6 +100,7 @@ const ProjectAvatar = styled.div`
   font-size: 1.3rem;
   font-weight: 700;
   margin-right: 1.25rem;
+  flex-shrink: 0;
 `;
 const ProjectInfo = styled.div`
   flex: 1;
@@ -121,12 +112,20 @@ const ProjectTokenRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 100%;
 `;
 const ProjectToken = styled.span`
   font-size: 0.92rem;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
   font-family: 'SFMono-Regular', monospace;
+  word-break: break-all;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  background: var(--background-light);
+  padding: 2px 6px;
+  border-radius: 4px;
 `;
 const ProjectName = styled.span`
   font-size: 1rem;
@@ -176,6 +175,42 @@ const Dashboard: React.FC = () => {
 
   // --- Regular user dashboard redesign ---
   const [showTokenId, setShowTokenId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'favorite' | 'name' | 'created_at'>('favorite');
+  const [favorites, setFavorites] = useState<{ [id: string]: boolean }>({});
+  const [revealedTokenId, setRevealedTokenId] = useState<string | null>(null);
+
+  // Filter and sort projects
+  const filteredProjects = projects
+    .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'favorite') {
+        const favA = favorites[a.id] ? 1 : 0;
+        const favB = favorites[b.id] ? 1 : 0;
+        if (favA !== favB) return favB - favA;
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'created_at') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      return 0;
+    });
+
+  const toggleFavorite = async (id: string) => {
+    const newValue = !favorites[id];
+    setFavorites(favs => ({ ...favs, [id]: newValue }));
+    // Persist favorite status in DB
+    await supabase
+      .from('projects')
+      .update({ favorite: newValue })
+      .eq('id', id)
+      .eq('user_id', user?.id);
+    // Optionally, refresh projects from DB
+    fetchProjects();
+  };
 
   const fetchProjects = async () => {
     if (!user) return;
@@ -187,7 +222,15 @@ const Dashboard: React.FC = () => {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
-    else setProjects(data || []);
+    else {
+      setProjects(data || []);
+      // Initialize favorites from DB
+      const favs: { [id: string]: boolean } = {};
+      (data || []).forEach((p: any) => {
+        favs[p.id] = !!p.favorite;
+      });
+      setFavorites(favs);
+    }
     setLoading(false);
   };
 
@@ -324,49 +367,76 @@ const Dashboard: React.FC = () => {
         <LogoutButton onClick={logout}>Log Out</LogoutButton>
       </Header>
       <SectionTitle>Your Webflow Projects</SectionTitle>
-      <FormCard>
-        <FormTitle>Add New Project</FormTitle>
-        <Form onSubmit={(e: React.FormEvent<HTMLFormElement>) => addProject(e)}>
-          <Input
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-            placeholder="Project Name"
-            required
+      <TopBar>
+        <AddButton onClick={() => setShowAddModal(true)}><FiPlus /> Add Project</AddButton>
+        <SearchBar>
+          <FiSearch />
+          <SearchInput
+            type="text"
+            placeholder="Search projects..."
+            value={searchTerm}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           />
-          <Input
-            value={token}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToken(e.target.value)}
-            placeholder="Webflow Token"
-            required
-            type={showTokenId === 'new' ? 'text' : 'password'}
-            autoComplete="off"
-          />
-          <ShowHideButton
-            type="button"
-            onClick={() => setShowTokenId(showTokenId === 'new' ? null : 'new')}
-            tabIndex={-1}
-          >
-            {showTokenId === 'new' ? 'Hide' : 'Show'}
-          </ShowHideButton>
-          <SubmitButton type="submit" disabled={loading}>
-            {loading ? 'Adding...' : 'Add Project'}
-          </SubmitButton>
-        </Form>
-        <FormHelper>Your Webflow API token is kept private and only used for publishing.</FormHelper>
-        {error && <ErrorMessage>{error}</ErrorMessage>}
-      </FormCard>
+        </SearchBar>
+        <SortSelect value={sortBy} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value as any)}>
+          <option value="favorite">Favorites</option>
+          <option value="name">Name</option>
+          <option value="created_at">Recently Added</option>
+        </SortSelect>
+      </TopBar>
+      {showAddModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle>Add New Project</ModalTitle>
+              <CloseButton onClick={() => setShowAddModal(false)}><FiX /></CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <Form onSubmit={(e: React.FormEvent<HTMLFormElement>) => { addProject(e); setShowAddModal(false); }}>
+                <Input
+                  value={name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                  placeholder="Project Name"
+                  required
+                />
+                <Input
+                  value={token}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToken(e.target.value)}
+                  placeholder="Webflow Token"
+                  required
+                  type={showTokenId === 'new' ? 'text' : 'password'}
+                  autoComplete="off"
+                />
+                <ShowHideButton
+                  type="button"
+                  onClick={() => setShowTokenId(showTokenId === 'new' ? null : 'new')}
+                  tabIndex={-1}
+                >
+                  {showTokenId === 'new' ? 'Hide' : 'Show'}
+                </ShowHideButton>
+                <SubmitButton type="submit" disabled={loading}>
+                  {loading ? 'Adding...' : 'Add Project'}
+                </SubmitButton>
+              </Form>
+              <FormHelper>Your Webflow API token is kept private and only used for publishing.</FormHelper>
+              {error && <ErrorMessage>{error}</ErrorMessage>}
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
       <ProjectGrid>
-        {projects.length === 0 && (
+        {filteredProjects.length === 0 && (
           <EmptyState>
             <EmptyIcon>📂</EmptyIcon>
-            <div>No projects yet. Add your first Webflow project above.</div>
+            <div>No projects found. Try adding or searching above.</div>
           </EmptyState>
         )}
-        {projects.map(p => {
+        {filteredProjects.map(p => {
           const isSelected = !!(selectedProject && selectedProject.id === p.id);
           const maskedToken = p.token.length > 8
             ? `${p.token.slice(0, 4)}••••••••${p.token.slice(-4)}`
             : '••••••••';
+          const isFavorite = !!favorites[p.id];
           return (
             <ProjectCard
               key={p.id}
@@ -375,19 +445,26 @@ const Dashboard: React.FC = () => {
               tabIndex={0}
               title={isSelected ? 'Selected project' : 'Click to select'}
             >
+              <StarButton
+                $active={isFavorite}
+                onClick={e => { e.stopPropagation(); toggleFavorite(p.id); }}
+                title={isFavorite ? 'Unfavorite' : 'Mark as favorite'}
+              >
+                <FiStar />
+              </StarButton>
               <ProjectAvatar>{p.name?.[0]?.toUpperCase() || '?'}</ProjectAvatar>
               <ProjectInfo>
                 <ProjectName>{p.name}</ProjectName>
                 <ProjectTokenRow>
                   <ProjectToken>
-                    {showTokenId === p.id ? p.token : maskedToken}
+                    {revealedTokenId === p.id ? p.token : maskedToken}
                   </ProjectToken>
                   <ShowHideButton
                     type="button"
-                    onClick={e => { e.stopPropagation(); setShowTokenId(showTokenId === p.id ? null : p.id); }}
+                    onClick={e => { e.stopPropagation(); setRevealedTokenId(revealedTokenId === p.id ? null : p.id); }}
                     tabIndex={-1}
                   >
-                    {showTokenId === p.id ? 'Hide' : 'Show'}
+                    {revealedTokenId === p.id ? 'Hide' : 'Show'}
                   </ShowHideButton>
                 </ProjectTokenRow>
               </ProjectInfo>

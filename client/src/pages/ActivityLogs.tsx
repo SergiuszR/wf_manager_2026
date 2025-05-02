@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { getProjectActivityLogs, ActivityLog } from '../services/activityLogService';
+import { getProjectActivityLogs, ActivityLog, deleteActivityLog } from '../services/activityLogService';
 
 // Extend the User type locally to include webflowToken
 interface UserWithWebflowToken extends SupabaseUser {
@@ -29,6 +29,9 @@ const actionColors: Record<string, string> = {
   edit_cms_item: '#6366f1', // indigo
   create: '#22c55e', // green
   delete: '#ef4444', // red
+  upload_asset: '#f59e42', // orange
+  delete_asset: '#e11d48', // dark red
+  publish_site: '#0ea5e9', // cyan/blue
 };
 const entityIcons: Record<string, string> = {
   asset: '🖼️',
@@ -63,6 +66,13 @@ const ActivityLogs: React.FC = () => {
   const [actionFilter, setActionFilter] = useState('');
   const [entityFilter, setEntityFilter] = useState('');
   const logsPerPage = 50;
+
+  // Toast state for notifications
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   useEffect(() => {
     if (selectedProject?.id) {
@@ -155,6 +165,20 @@ const ActivityLogs: React.FC = () => {
     return matchesSearch && matchesAction && matchesEntity;
   });
 
+  // Helper to prettify action labels
+  const prettifyLabel = (label: string) => label.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const handleDeleteLog = async (logId: string) => {
+    if (!window.confirm('Are you sure you want to permanently erase this log? This action cannot be undone.')) return;
+    const ok = await deleteActivityLog(logId);
+    if (ok) {
+      setLogs(prev => prev.filter(l => l.id !== logId));
+      showToast('Log erased successfully!', 'success');
+    } else {
+      showToast('Failed to erase log. Please try again.', 'error');
+    }
+  };
+
   // Premium check
   if (!user?.user_metadata?.premium) {
     return (
@@ -242,26 +266,38 @@ const ActivityLogs: React.FC = () => {
             <tbody>
               {filteredLogs.map(log => (
                 <tr key={log.id}>
-                  <td><span title={new Date(log.created_at).toLocaleString()}>{timeAgo(log.created_at)}</span></td>
+                  <td><span>{new Date(log.created_at).toLocaleString()}</span></td>
                   <td>
                     <ActionBadge color={actionColors[log.action_type] || '#888'}>
-                      {actionIcons[log.action_type] || '🔔'} {actionLabels[log.action_type] || log.action_type}
+                      {actionIcons[log.action_type] || '🔔'} {actionLabels[log.action_type] || prettifyLabel(log.action_type)}
                     </ActionBadge>
                   </td>
                   <td>
-                    <EntityBadge>
-                      {log.entity_type === 'asset' && (log.new_data?.thumbnailUrl || log.new_data?.url) ? (
-                        <ThumbImg
-                          src={log.new_data.thumbnailUrl || log.new_data.url}
-                          alt={log.new_data?.name || log.new_data?.fileName || 'Asset'}
-                        />
-                      ) : (
-                        <span style={{fontSize: '1.2em', marginRight: 6}}>{entityIcons[log.entity_type] || '🔗'}</span>
-                      )}
-                      {log.new_data?.name || log.new_data?.title || (log.entity_type === 'asset' ? 'Asset' : 'CMS Item')}
-                    </EntityBadge>
+                    {log.action_type === 'publish_site' && log.entity_type === 'site' ? (
+                      <EntityBadge>
+                        <span style={{fontSize: '1.2em', marginRight: 6}}>🌐</span>
+                        {log.new_data?.siteName || 'Site'}
+                      </EntityBadge>
+                    ) : (
+                      <EntityBadge>
+                        {log.entity_type === 'asset' && (log.new_data?.thumbnailUrl || log.new_data?.url) ? (
+                          <ThumbImg
+                            src={log.new_data.thumbnailUrl || log.new_data.url}
+                            alt={log.new_data?.name || log.new_data?.fileName || 'Asset'}
+                          />
+                        ) : (
+                          <span style={{fontSize: '1.2em', marginRight: 6}}>{entityIcons[log.entity_type] || '🔗'}</span>
+                        )}
+                        {log.new_data?.name || log.new_data?.title || (log.entity_type === 'asset' ? 'Asset' : 'CMS Item')}
+                      </EntityBadge>
+                    )}
                   </td>
-                  <td>{formatLogDetails(log)}</td>
+                  <td style={{ position: 'relative', paddingRight: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ flex: 1 }}>{formatLogDetails(log)}</div>
+                      <DeleteButton onClick={() => handleDeleteLog(log.id)} title="Erase log">🗑️</DeleteButton>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -274,6 +310,10 @@ const ActivityLogs: React.FC = () => {
             </LoadMoreContainer>
           )}
         </TableWrapper>
+      )}
+
+      {toast && (
+        <ToastContainer type={toast.type}>{toast.message}</ToastContainer>
       )}
     </PageContainer>
   );
@@ -308,24 +348,34 @@ const TableWrapper = styled.div`
 `;
 const StyledTable = styled.table`
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--background-light);
-  border-radius: var(--border-radius);
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
   th, td {
-    padding: 0.75rem 1rem;
+    padding: 0.7rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     vertical-align: top;
+    background: transparent;
   }
   th {
     background: var(--background-main);
     color: var(--text-secondary);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.98rem;
+    border-bottom: 2px solid var(--border-color);
   }
   tr:last-child td {
     border-bottom: none;
+  }
+  tbody tr {
+    transition: background 0.18s;
+    &:hover {
+      background: var(--background-secondary);
+    }
   }
 `;
 const ActionBadge = styled.span<{ color: string }>`
@@ -497,8 +547,8 @@ const ViewLink = styled.a`
 
 const DetailsList = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-direction: row;
+  gap: 2rem;
   background-color: var(--background-main);
   border-radius: 4px;
   padding: 0.75rem;
@@ -581,6 +631,39 @@ const ThumbImg = styled.img`
   margin-right: 0.5em;
   background: #f3f3f3;
   border: 1px solid #eee;
+`;
+
+const DeleteButton = styled.button`
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  transition: background 0.15s;
+  &:hover {
+    background: #ffeaea;
+  }
+`;
+
+const ToastContainer = styled.div<{ type: 'success' | 'error' }>`
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  z-index: 9999;
+  background: ${p => p.type === 'success' ? '#22c55e' : '#ef4444'};
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  font-size: 1.1rem;
+  font-weight: 500;
+  animation: fadeIn 0.3s;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 export default ActivityLogs; 

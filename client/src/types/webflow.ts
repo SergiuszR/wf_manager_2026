@@ -40,6 +40,8 @@ export interface EditModalState {
   visibleColumns: string[];
   isLoading: boolean;
   error?: string;
+  stagedCount?: number;
+  liveCount?: number;
 }
 
 export interface ItemDetailModalState {

@@ -6,9 +6,10 @@ export type ActivityLogType =
   | 'create_cms_item'
   | 'delete_cms_item'
   | 'upload_asset'
-  | 'delete_asset';
+  | 'delete_asset'
+  | 'publish_site';
 
-export type EntityType = 'asset' | 'cms_item';
+export type EntityType = 'asset' | 'cms_item' | 'site';
 
 export interface ActivityLog {
   id: string;
@@ -136,7 +137,18 @@ export const formatActivityLog = (log: ActivityLog): string => {
   
   let entityName = '';
   
-  // Extract a descriptive name for the entity if available
+  if (log.entity_type === 'site' && log.action_type === 'publish_site') {
+    // Special formatting for publish_site
+    const siteName = log.new_data?.siteName || log.entity_id;
+    if (log.new_data?.type === 'scheduled') {
+      const sched = log.new_data?.scheduledTime ? ` (Scheduled: ${new Date(log.new_data.scheduledTime).toLocaleString()})` : '';
+      return `${date} - Scheduled publish for site: "${siteName}"${sched}`;
+    } else {
+      return `${date} - Published site: "${siteName}"`;
+    }
+  }
+  
+  // Default formatting for other types
   if (log.new_data) {
     if (log.entity_type === 'asset') {
       entityName = log.new_data.name || log.new_data.fileName || log.entity_id;
@@ -151,4 +163,24 @@ export const formatActivityLog = (log: ActivityLog): string => {
   }
   
   return `${date} - ${actionDescription}`;
+};
+
+/**
+ * Deletes an activity log by its ID
+ */
+export const deleteActivityLog = async (logId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('activity_logs')
+      .delete()
+      .eq('id', logId);
+    if (error) {
+      console.error('Error deleting activity log:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to delete activity log:', err);
+    return false;
+  }
 }; 

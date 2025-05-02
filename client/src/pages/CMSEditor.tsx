@@ -1286,6 +1286,30 @@ function prettifySlug(slug: string): string {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// Utility to format cell values
+function formatCellValue(value: any, column: string): React.ReactNode {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? '✔️' : '✖️';
+  if (typeof value === 'string' && value.match(/^https?:\/\//) && (column.includes('image') || column.includes('img'))) {
+    return <img src={value} alt={column} style={{ maxWidth: 40, maxHeight: 40, borderRadius: 4 }} />;
+  }
+  if (typeof value === 'string' && value.length > 50) {
+    return <span title={value}>{value.substring(0, 50)}...</span>;
+  }
+  if (typeof value === 'object') {
+    if (value.url && (column.includes('image') || column.includes('img'))) {
+      return <img src={value.url} alt={column} style={{ maxWidth: 40, maxHeight: 40, borderRadius: 4 }} />;
+    }
+    return <span title={JSON.stringify(value)}>{JSON.stringify(value).substring(0, 50)}...</span>;
+  }
+  // Format dates
+  if (typeof value === 'string' && (column.toLowerCase().includes('date') || column.toLowerCase().includes('updated') || column.toLowerCase().includes('created'))) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return d.toLocaleString();
+  }
+  return String(value);
+}
+
 // Add new styled components for flexbox-based field rows
 const ItemDetailFlexRow = styled.div`
   display: flex;
@@ -1339,6 +1363,53 @@ const FieldCard = styled.div`
   font-size: 0.95rem;
 `;
 
+// Utility to extract all unique fieldData keys from items
+function extractFieldDataColumns(items: WebflowCollectionItem[]): string[] {
+  const fieldKeys = new Set<string>();
+  items.forEach(item => {
+    if (item.fieldData && typeof item.fieldData === 'object') {
+      Object.keys(item.fieldData).forEach(key => fieldKeys.add(key));
+    }
+  });
+  return Array.from(fieldKeys);
+}
+
+// Utility to flatten item for table row
+function flattenItem(item: WebflowCollectionItem, fieldColumns: string[]): any {
+  const flat: any = { ...item };
+  if (item.fieldData && typeof item.fieldData === 'object') {
+    fieldColumns.forEach(key => {
+      flat[key] = item.fieldData[key];
+    });
+  }
+  return flat;
+}
+
+// Add styled badges for item counts
+const ItemCountsContainer = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+`;
+const ItemCountBadge = styled.span<{ $type: 'all' | 'staged' | 'live' | 'draft' }>`
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  background-color: ${p =>
+    p.$type === 'all' ? '#e3e8f7' :
+    p.$type === 'staged' ? '#fef9c3' :
+    p.$type === 'live' ? '#e3f7ea' :
+    '#fff3e0'};
+  color: ${p =>
+    p.$type === 'all' ? '#1a64b3' :
+    p.$type === 'staged' ? '#b45309' :
+    p.$type === 'live' ? '#166534' :
+    '#d97706'};
+`;
+
 const CMSEditor = (): ReactElement => {
   const { selectedProject } = useProjectContext();
   const [collections, setCollections] = useState<WebflowCollection[]>([]);
@@ -1385,6 +1456,8 @@ const CMSEditor = (): ReactElement => {
   // Add a new state for image previews to avoid using hooks inside map function
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [fieldSlug: string]: string | null }>({});
   const [webflowSiteId, setWebflowSiteId] = useState<string>('');
+  const [loadingCounts, setLoadingCounts] = useState<Record<string, boolean>>({});
+  const countsCache = useRef<Record<string, { stagedCount: number; liveCount: number }>>({});
 
   // Fetch the real Webflow siteId for the selected project
   useEffect(() => {
@@ -1649,21 +1722,25 @@ const CMSEditor = (): ReactElement => {
     try {
       const response = await webflowAPI.getCollectionItems(collection.id, selectedProject.token);
       const items = response.data?.items || [];
-      
-      // Extract all unique column names from the items
+      const stagedCount = response.data?.stagedCount;
+      const liveCount = response.data?.liveCount;
+
+      // Extract all unique column names from the items, including fieldData keys
+      const fieldColumns = extractFieldDataColumns(items);
       const allColumns = new Set<string>();
       items.forEach((item: WebflowCollectionItem) => {
         Object.keys(item).forEach(key => {
-          if (key !== '_id' && key !== 'id' && key !== '_draft' && key !== '_archived') {
+          if (key !== '_id' && key !== 'id' && key !== '_draft' && key !== '_archived' && key !== 'fieldData') {
             allColumns.add(key);
           }
         });
       });
-      
+      fieldColumns.forEach(key => allColumns.add(key));
+
       // Default columns to display
-      const defaultColumns = ['name', 'slug', 'status', 'updated', 'created', 'publishedOn'];
+      const defaultColumns = ['name', 'slug', ...fieldColumns.slice(0, 3), 'status', 'updated', 'created', 'publishedOn'];
       const availableColumns = Array.from(allColumns);
-      
+
       // Sort columns to put default columns first
       availableColumns.sort((a, b) => {
         const aIndex = defaultColumns.indexOf(a);
@@ -1674,14 +1751,19 @@ const CMSEditor = (): ReactElement => {
         return a.localeCompare(b);
       });
 
-      // All columns visible by default
+      // Flatten items for table rows
+      const flatItems = items.map((item: WebflowCollectionItem) => flattenItem(item, fieldColumns));
+
+      // Show only default columns by default
       setEditModal({
         isOpen: true,
         collection,
-        items,
+        items: flatItems,
         availableColumns,
-        visibleColumns: availableColumns,
-        isLoading: false
+        visibleColumns: defaultColumns.filter(col => availableColumns.includes(col)),
+        isLoading: false,
+        stagedCount,
+        liveCount
       });
     } catch (err: any) {
       setEditModal({
@@ -1752,19 +1834,23 @@ const CMSEditor = (): ReactElement => {
         item.id || item._id,
         selectedProject.token
       );
+      console.log('Item API response:', itemResponse.data);
 
       // Fetch full collection details (with fields)
       const collectionResponse = await webflowAPI.getCollectionDetails(
         collection.id,
         selectedProject.token
       );
+      const collectionFields = collectionResponse.data.collection?.fields || [];
       const fullCollection = {
         ...collection,
-        ...collectionResponse.data.collection // This should include the fields array
+        ...collectionResponse.data.collection,
+        fields: collectionFields, // Ensure fields is always present
       };
 
       // Normalize item details for Webflow API v2 (flatten fieldData)
-      const normalizedItemDetails = normalizeWebflowItem(itemResponse.data);
+      const normalizedItemDetails = normalizeWebflowItem(itemResponse.data.item || itemResponse.data);
+      console.log('Normalized item details:', normalizedItemDetails);
 
       setItemDetailModal({
         isOpen: true,
@@ -2410,6 +2496,54 @@ const CMSEditor = (): ReactElement => {
     margin: 2rem 0 1rem 0;
   `;
 
+  // Add this useEffect for debugging Item Fields rendering
+  useEffect(() => {
+    if (itemDetailModal.isOpen) {
+      console.log('ItemDetailModal.collection:', itemDetailModal.collection);
+      console.log('ItemDetailModal.collection.fields:', itemDetailModal.collection?.fields);
+      console.log('ItemDetailModal.itemDetails:', itemDetailModal.itemDetails);
+    }
+  }, [itemDetailModal.isOpen, itemDetailModal.collection, itemDetailModal.itemDetails]);
+
+  // Fetch accurate staged/live counts for each collection on load
+  useEffect(() => {
+    if (!selectedProject || !selectedProject.token || collections.length === 0) return;
+    collections.forEach((col) => {
+      if (countsCache.current[col.id]) {
+        // Already cached, update collection
+        setCollections(prev => prev.map(c => c.id === col.id ? {
+          ...c,
+          stagedItemCount: countsCache.current[col.id].stagedCount,
+          liveItemCount: countsCache.current[col.id].liveCount
+        } : c));
+        return;
+      }
+      setLoadingCounts(prev => ({ ...prev, [col.id]: true }));
+      webflowAPI.getCollectionItems(col.id, selectedProject.token)
+        .then(res => {
+          const stagedCount = res.data?.stagedCount ?? 0;
+          const liveCount = res.data?.liveCount ?? 0;
+          countsCache.current[col.id] = { stagedCount, liveCount };
+          setCollections(prev => prev.map(c => c.id === col.id ? {
+            ...c,
+            stagedItemCount: stagedCount,
+            liveItemCount: liveCount
+          } : c));
+        })
+        .catch(() => {
+          setCollections(prev => prev.map(c => c.id === col.id ? {
+            ...c,
+            stagedItemCount: 0,
+            liveItemCount: 0
+          } : c));
+        })
+        .finally(() => {
+          setLoadingCounts(prev => ({ ...prev, [col.id]: false }));
+        });
+    });
+  // eslint-disable-next-line
+  }, [selectedProject, collections.length]);
+
   return (
     <CmsEditorContainer>
       <CmsHeader>
@@ -2466,11 +2600,25 @@ const CMSEditor = (): ReactElement => {
                   <td>{collection.name}</td>
                   <td>{collection.slug}</td>
                   <td>
-                    {collection.itemCount}
-                    {collection.stagedItemCount !== undefined && collection.liveItemCount !== undefined && (
-                      <ItemCounts>
-                        ({collection.stagedItemCount} staged, {collection.liveItemCount} live)
-                      </ItemCounts>
+                    {loadingCounts[collection.id] ? (
+                      <span style={{ color: '#aaa', fontSize: '0.9em' }}>Loading...</span>
+                    ) : (
+                      <ItemCountsContainer>
+                        <ItemCountBadge $type="all" title="All items">
+                          All: {collection.stagedItemCount ?? collection.itemCount}
+                        </ItemCountBadge>
+                        <ItemCountBadge $type="staged" title="Staged (unpublished) items">
+                          Staged: {collection.stagedItemCount ?? collection.itemCount}
+                        </ItemCountBadge>
+                        <ItemCountBadge $type="live" title="Live (published) items">
+                          Live: {collection.liveItemCount ?? 0}
+                        </ItemCountBadge>
+                        {collection.stagedItemCount !== undefined && collection.liveItemCount !== undefined && collection.stagedItemCount > collection.liveItemCount && (
+                          <ItemCountBadge $type="draft" title="Draft items (not yet published)">
+                            Draft: {collection.stagedItemCount - collection.liveItemCount}
+                          </ItemCountBadge>
+                        )}
+                      </ItemCountsContainer>
                     )}
                   </td>
                   <td>{formatDate(collection.lastUpdated)}</td>
@@ -2640,8 +2788,8 @@ const CMSEditor = (): ReactElement => {
                           <thead>
                             <tr>
                               {editModal.visibleColumns.map(column => (
-                                <ItemsTableHeader key={column}>
-                                  {column}
+                                <ItemsTableHeader key={column} title={prettifySlug(column)}>
+                                  {prettifySlug(column)}
                                 </ItemsTableHeader>
                               ))}
                               <ItemsTableHeader>Actions</ItemsTableHeader>
@@ -2652,19 +2800,17 @@ const CMSEditor = (): ReactElement => {
                               <ItemsTableRow key={item._id || item.id}>
                                 {editModal.visibleColumns.map(column => (
                                   <ItemsTableCell key={`${item._id || item.id}-${column}`}>
-                                    {item[column] !== undefined ? 
-                                      (typeof item[column] === 'object' ? 
-                                        JSON.stringify(item[column]).substring(0, 50) + '...' : 
-                                        String(item[column]).substring(0, 50)) : 
-                                      '-'}
+                                    {formatCellValue(item[column], column)}
                                   </ItemsTableCell>
                                 ))}
                                 <ItemsTableCell>
                                   <ImportedActionButton 
                                     onClick={() => fetchItemDetails(editModal.collection!, item)}
                                     className="small-button"
+                                    style={{ fontWeight: 600, background: '#0070f3', color: 'white', borderRadius: 4 }}
+                                    title="View item details"
                                   >
-                                    View
+                                    <span role="img" aria-label="View">🔍</span> View
                                   </ImportedActionButton>
                                 </ItemsTableCell>
                               </ItemsTableRow>
@@ -2680,7 +2826,26 @@ const CMSEditor = (): ReactElement => {
             
             <EditModalFooter>
               <ItemsCount>
-                {editModal.items.length} items
+                {editModal.stagedCount !== undefined && editModal.liveCount !== undefined ? (
+                  <ItemCountsContainer>
+                    <ItemCountBadge $type="all" title="All items">
+                      All: {editModal.stagedCount}
+                    </ItemCountBadge>
+                    <ItemCountBadge $type="staged" title="Staged (unpublished) items">
+                      Staged: {editModal.stagedCount}
+                    </ItemCountBadge>
+                    <ItemCountBadge $type="live" title="Live (published) items">
+                      Live: {editModal.liveCount}
+                    </ItemCountBadge>
+                    {editModal.stagedCount > editModal.liveCount && (
+                      <ItemCountBadge $type="draft" title="Draft items (not yet published)">
+                        Draft: {editModal.stagedCount - editModal.liveCount}
+                      </ItemCountBadge>
+                    )}
+                  </ItemCountsContainer>
+                ) : (
+                  `${editModal.items.length} items`
+                )}
               </ItemsCount>
               <ImportedActionButton onClick={closeEditModal}>Close</ImportedActionButton>
             </EditModalFooter>
@@ -2726,6 +2891,11 @@ const CMSEditor = (): ReactElement => {
                 <ErrorContainer>
                   <ErrorIcon>⚠️</ErrorIcon>
                   <div>{itemDetailModal.error}</div>
+                  {itemDetailModal.error?.toLowerCase().includes('not found') && (
+                    <div style={{ color: '#b00', marginTop: 8 }}>
+                      This item could not be found. Please check that the collection and item IDs are correct and that your Webflow token is valid.
+                    </div>
+                  )}
                 </ErrorContainer>
               ) : !itemDetailModal.itemDetails ? (
                 <EmptyStateContainer>
@@ -2736,6 +2906,11 @@ const CMSEditor = (): ReactElement => {
                 <ItemDetailGrid>
                   <ItemDetailSection>
                     <ItemDetailSectionTitle>Item Fields</ItemDetailSectionTitle>
+                    {(!itemDetailModal.collection.fields || itemDetailModal.collection.fields.length === 0) && (
+                      <EmptyStateMessage>
+                        No fields found for this collection. Please check your collection schema or API response.
+                      </EmptyStateMessage>
+                    )}
                     <div>
                       {itemDetailModal.collection.fields && itemDetailModal.collection.fields.map((field: any) => {
                         if (!field) return null;

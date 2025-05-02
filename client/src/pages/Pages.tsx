@@ -498,22 +498,26 @@ const Pages: React.FC = () => {
     setError('');
     try {
       if (!selectedProject?.token) {
-        throw new Error('No project token available');
+        throw new Error('No project token available. Please select a project.');
       }
       const response = await webflowAPI.getPageDom(pageId, selectedProject.token);
       const page = pages.find(p => p.id === pageId) || null;
+      if (!response.data || !response.data.dom) {
+        throw new Error('No DOM data returned from API.');
+      }
       setDomModal({
         isOpen: true,
         page,
-        domContent: response.data.dom
+        domContent: response.data.dom,
+        error: undefined
       });
     } catch (err: any) {
       let errorMessage = 'Failed to load page DOM';
       if (err.response) {
         if (err.response.status === 401) {
-          errorMessage = 'Authentication error: Your token may have expired';
+          errorMessage = 'Authentication error: Your token may have expired.';
         } else if (err.response.status === 404) {
-          errorMessage = 'Page not found: The API could not find this page';
+          errorMessage = 'Page not found: The API could not find this page.';
         } else if (err.response.data && err.response.data.message) {
           errorMessage = `API Error: ${err.response.data.message}`;
         }

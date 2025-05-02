@@ -789,31 +789,26 @@ const getCollectionItems = async (req: Request, res: Response) => {
 const getCollectionItem = async (req: Request, res: Response) => {
   try {
     const { collectionId, itemId } = req.params;
-    
+    const webflowToken = getEffectiveWebflowToken(req);
+    // Debug logging
+    console.log('[getCollectionItem] collectionId:', collectionId, 'itemId:', itemId, 'webflowToken:', webflowToken ? '[REDACTED]' : 'MISSING');
     if (!collectionId) {
       return res.status(400).json({ message: 'Collection ID is required' });
     }
-    
     if (!itemId) {
       return res.status(400).json({ message: 'Item ID is required' });
     }
-    
-    const webflowToken = getEffectiveWebflowToken(req);
     if (!webflowToken) {
       return res.status(400).json({ message: 'No Webflow token available' });
     }
-    
     const client = createWebflowAPIClient(webflowToken);
-    
     // Use the v2 endpoint for individual item as per Webflow API documentation
     console.log(`Fetching item: /v2/collections/${collectionId}/items/${itemId}`);
     const response = await client.get(`/v2/collections/${collectionId}/items/${itemId}`);
-    
     // Return the full item data
     res.status(200).json(response.data);
   } catch (error: any) {
     console.error('Error fetching collection item:', error.message);
-    
     // Forward the appropriate status code from the Webflow API
     if (error.response?.status) {
       return res.status(error.response.status).json({ 
@@ -821,7 +816,6 @@ const getCollectionItem = async (req: Request, res: Response) => {
         error: error.response?.data?.message || error.message 
       });
     }
-    
     res.status(500).json({ message: 'Error fetching collection item', error: error.message });
   }
 };

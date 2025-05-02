@@ -88,8 +88,9 @@ export const CloseButton = styled.button`
 // Create a component for modal body
 export const ModalBody = styled.div`
   padding: 1.5rem;
-  overflow-y: auto;
-  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
 `;
 
 // Create a component for modal footer
@@ -371,4 +372,75 @@ export const EditModalFooter = styled.div`
   padding: 1.25rem 2rem;
   background-color: var(--background-light);
   border-top: 1px solid var(--border-color);
+`;
+
+// Top bar for dashboard actions
+export const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+`;
+
+// Add button for dashboard
+export const AddButton = styled.button`
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.7rem 1.2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background 0.18s;
+  &:hover {
+    background: var(--primary-hover);
+  }
+`;
+
+// Search bar container
+export const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  background: var(--background-light);
+  border-radius: var(--border-radius);
+  padding: 0.4rem 0.8rem;
+  gap: 0.5rem;
+`;
+
+// Search input
+export const SearchInput = styled.input`
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+  color: var(--text-primary);
+`;
+
+// Sort select dropdown
+export const SortSelect = styled.select`
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--background-light);
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0.4rem 1.2rem 0.4rem 0.7rem;
+  font-weight: 500;
+`;
+
+// Star button for favorites
+export const StarButton = styled.button<{ $active?: boolean }>`
+  background: none;
+  border: none;
+  color: ${p => p.$active ? 'gold' : 'var(--border-color)'};
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  cursor: pointer;
+  transition: color 0.18s;
+  &:hover {
+    color: gold;
+  }
 `; 
