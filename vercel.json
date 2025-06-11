@@ -1,57 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "cd server && npm install && cd ../client && npm install && npm run build && cd ../api && npm install",
-  "installCommand": "cd server && npm install && cd ../client && npm install && cd ../api && npm install",
+  "buildCommand": "cd client && npm install && npm run build && cd ../api && npm install && npm run build",
   "outputDirectory": "client/dist",
-  "functions": {
-    "api/webflow/pages-group.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/webflow/assets-group.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/webflow/collections-group.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/webflow/sites-group.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/webflow/auth-group.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/webflow-api.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "X-Requested-With, Content-Type, Authorization, X-Webflow-Token" }
-      ]
-    }
-  ],
   "rewrites": [
-    { "source": "/api/webflow/pages/:match*", "destination": "/api/webflow/pages-group" },
-    { "source": "/api/webflow/collections/:match*", "destination": "/api/webflow/collections-group" },
-    { "source": "/api/webflow/sites/:siteId/assets/csv", "destination": "/api/webflow/assets-group" },
-    { "source": "/api/webflow/sites/:siteId/assets", "destination": "/api/webflow/assets-group" },
-    { "source": "/api/webflow/sites/:match*", "destination": "/api/webflow/sites-group" },
-    { "source": "/api/webflow/assets/:match*", "destination": "/api/webflow/assets-group" },
-    { "source": "/api/webflow/token-api", "destination": "/api/webflow/auth-group" },
-    { "source": "/api/auth/:path*", "destination": "/api/webflow/auth-group" },
-    { "source": "/api/webflow/(.*)", "destination": "/api/webflow-api.js" },
-    { "source": "/:path*\\.(js|css|png|jpg|jpeg|svg|ico|json|woff|woff2|ttf|otf)", "destination": "/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "trailingSlash": false,
-  "cleanUrls": true
+    {
+      "source": "/api/webflow/(.*)",
+      "destination": "/api/webflow"
+    },
+    {
+      "source": "/((?!api/.*).*)",
+      "destination": "/index.html"
+    }
+  ]
 } 

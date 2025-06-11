@@ -2,7 +2,7 @@
   "name": "webflow_2026-monorepo",
   "private": true,
   "scripts": {
-    "vercel-build": "cd client && npm install && npm run build && cd ../api && npm install",
+    "vercel-build": "cd client && npm install && npm run build",
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && npm run dev\""
   },
   "dependencies": {
@@ -11,7 +11,6 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
-    "react-quill": "^2.0.0",
     "spark-md5": "^3.0.2"
   },
   "devDependencies": {

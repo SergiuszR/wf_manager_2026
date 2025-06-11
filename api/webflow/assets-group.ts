@@ -208,16 +208,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
             });
             res.status(200).json(response.data);
-          } catch (error: any) {
-            if (error.response) {
-              console.error('Webflow API error (GET):', error.response.data);
-              res.status(error.response.status || 500).json({
-                message: 'Webflow API error',
-                webflowError: error.response.data,
-                status: error.response.status
-              });
-            } else {
+          } catch (error) {
+            if (error instanceof Error) {
               res.status(500).json({ message: 'Failed to fetch assets', error: error.message });
+            } else {
+              res.status(500).json({ message: 'Failed to fetch assets', error: 'An unknown error occurred' });
             }
           }
           return;

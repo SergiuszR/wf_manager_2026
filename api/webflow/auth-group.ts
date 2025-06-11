@@ -32,8 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log('No matching auth endpoint found for:', path);
     return res.status(404).send('Auth endpoint not found');
-  } catch (error) {
-    console.error('Error handling auth request:', error);
-    res.status(500).send(`Server error: ${error.message}`);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to authenticate', error: error?.message || 'Unknown error' });
   }
 } 

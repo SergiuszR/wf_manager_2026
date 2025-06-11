@@ -75,12 +75,65 @@ async function getAllPages(req: VercelRequest, res: VercelResponse, webflowToken
   }
 }
 
+async function getPageDetails(req: VercelRequest, res: VercelResponse, pageId: string, webflowToken: string) {
+  try {
+    const { siteId } = req.query;
+    
+    if (!siteId || typeof siteId !== 'string') {
+      res.status(400).json({ message: 'Site ID is required as a query parameter' });
+      return;
+    }
+    
+    const client = axios.create({
+      baseURL: 'https://api.webflow.com',
+      headers: {
+        'Authorization': `Bearer ${webflowToken}`,
+        'Accept-Version': '2.0.0',
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // Get site info
+    const siteResponse = await client.get(`/v2/sites/${siteId}`);
+    const site = siteResponse.data;
+    
+    if (!site) {
+      res.status(404).json({ message: 'Site not found' });
+      return;
+    }
+    
+    // Get all pages for this site
+    const pagesResponse = await client.get(`/v2/sites/${siteId}/pages`);
+    const pages = pagesResponse.data?.pages || [];
+    const page = pages.find((p: any) => p.id === pageId);
+    
+    if (!page) {
+      res.status(404).json({ message: 'Page not found in this site' });
+      return;
+    }
+    
+    const enhancedPage = {
+      ...page,
+      siteName: site.displayName || site.shortName,
+      siteId: site.id,
+      url: constructPublishedUrl(site, page),
+      previewUrl: constructPreviewUrl(siteId, pageId)
+    };
+    
+    res.status(200).json(enhancedPage);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to get page details', error: error.message });
+  }
+}
+
 async function getPageDom(req: VercelRequest, res: VercelResponse, pageId: string, webflowToken: string) {
   try {
+    // Get site ID from query parameters
     let { siteId } = req.query;
-    siteId = normalizeToString(siteId);
-    if (!siteId) {
+    
+    if (!siteId || typeof siteId !== 'string') {
       try {
+        // If siteId is not provided, try to get page details to find siteId
         const pageResponse = await axios.get(`https://api.webflow.com/v2/pages/${pageId}`, {
           headers: {
             'Authorization': `Bearer ${webflowToken}`,
@@ -94,10 +147,8 @@ async function getPageDom(req: VercelRequest, res: VercelResponse, pageId: strin
         return;
       }
     }
-    if (!siteId) {
-      res.status(400).json({ message: 'Site ID could not be determined' });
-      return;
-    }
+
+    // Fetch the page DOM
     const response = await axios.get(`https://api.webflow.com/v2/sites/${siteId}/pages/${pageId}/dom`, {
       headers: {
         'Authorization': `Bearer ${webflowToken}`,
@@ -105,24 +156,31 @@ async function getPageDom(req: VercelRequest, res: VercelResponse, pageId: strin
         'Content-Type': 'application/json',
       },
     });
+
     res.status(200).json(response.data);
   } catch (error: any) {
+    console.error('Error fetching page DOM:', error.message);
+    
+    // Forward the appropriate status code from the Webflow API
     if (error.response?.status) {
       return res.status(error.response.status).json({ 
         message: 'Error fetching page DOM', 
         error: error.response?.data?.message || error.message 
       });
     }
+    
     res.status(500).json({ message: 'Failed to fetch page DOM', error: error.message });
   }
 }
 
 async function getPageCustomCode(req: VercelRequest, res: VercelResponse, pageId: string, webflowToken: string) {
   try {
+    // Get site ID from query parameters
     let { siteId } = req.query;
-    siteId = normalizeToString(siteId);
-    if (!siteId) {
+    
+    if (!siteId || typeof siteId !== 'string') {
       try {
+        // If siteId is not provided, try to get page details to find siteId
         const pageResponse = await axios.get(`https://api.webflow.com/v2/pages/${pageId}`, {
           headers: {
             'Authorization': `Bearer ${webflowToken}`,
@@ -136,10 +194,8 @@ async function getPageCustomCode(req: VercelRequest, res: VercelResponse, pageId
         return;
       }
     }
-    if (!siteId) {
-      res.status(400).json({ message: 'Site ID could not be determined' });
-      return;
-    }
+
+    // Fetch the page metadata which includes custom code
     const response = await axios.get(`https://api.webflow.com/v2/sites/${siteId}/pages/${pageId}`, {
       headers: {
         'Authorization': `Bearer ${webflowToken}`,
@@ -147,122 +203,95 @@ async function getPageCustomCode(req: VercelRequest, res: VercelResponse, pageId
         'Content-Type': 'application/json',
       },
     });
-    const customCodeData = {
-      headCode: response.data?.customCode?.head || '',
-      footerCode: response.data?.customCode?.footer || '',
-      cssCode: response.data?.customCode?.css || '',
-      pageTitle: response.data?.title || '',
-      pagePath: response.data?.path || '',
+
+    const customCode = {
+      headCode: response.data.customCodes?.head || '',
+      footerCode: response.data.customCodes?.footer || '',
     };
-    res.status(200).json(customCodeData);
+
+    res.status(200).json(customCode);
   } catch (error: any) {
+    console.error('Error fetching page custom code:', error.message);
+    
+    // Forward the appropriate status code from the Webflow API
     if (error.response?.status) {
       return res.status(error.response.status).json({ 
         message: 'Error fetching page custom code', 
         error: error.response?.data?.message || error.message 
       });
     }
+    
     res.status(500).json({ message: 'Failed to fetch page custom code', error: error.message });
   }
 }
 
-async function getPageDetails(req: VercelRequest, res: VercelResponse, pageId: string, webflowToken: string) {
-  try {
-    let { siteId } = req.query;
-    siteId = normalizeToString(siteId);
-    if (!siteId) {
-      try {
-        const pageResponse = await axios.get(`https://api.webflow.com/v2/pages/${pageId}`, {
-          headers: {
-            'Authorization': `Bearer ${webflowToken}`,
-            'Accept-Version': '2.0.0',
-            'Content-Type': 'application/json',
-          },
-        });
-        siteId = pageResponse.data.site.id;
-      } catch (error: any) {
-        res.status(500).json({ message: 'Failed to determine site ID for page', error: error.message });
-        return;
-      }
-    }
-    if (!siteId) {
-      res.status(400).json({ message: 'Site ID could not be determined' });
-      return;
-    }
-    const response = await axios.get(`https://api.webflow.com/v2/sites/${siteId}/pages/${pageId}`, {
-      headers: {
-        'Authorization': `Bearer ${webflowToken}`,
-        'Accept-Version': '2.0.0',
-        'Content-Type': 'application/json',
-      },
-    });
-    const siteResponse = await axios.get(`https://api.webflow.com/v2/sites/${siteId}`, {
-      headers: {
-        'Authorization': `Bearer ${webflowToken}`,
-        'Accept-Version': '2.0.0',
-        'Content-Type': 'application/json',
-      },
-    });
-    const siteInfo = siteResponse.data;
-    const page = response.data;
-    const enhancedPage = {
-      ...page,
-      siteName: siteInfo.displayName || siteInfo.shortName,
-      siteId: siteId,
-      url: constructPublishedUrl(siteInfo, page),
-      previewUrl: constructPreviewUrl(siteId, pageId),
-    };
-    res.status(200).json(enhancedPage);
-  } catch (error: any) {
-    if (error.response?.status) {
-      return res.status(error.response.status).json({ 
-        message: 'Error fetching page details', 
-        error: error.response?.data?.message || error.message 
-      });
-    }
-    res.status(500).json({ message: 'Failed to fetch page details', error: error.message });
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log(`[PAGES-GROUP] ${req.method} ${req.url}`);
+  
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-  const { url, method } = req;
+  const { url } = req;
   if (!url) return res.status(400).send('Missing URL');
   try {
     const path = url.split('?')[0];
     const pathComponents = path.split('/').filter(Boolean);
+    console.log(`[PAGES-GROUP] Path components:`, pathComponents);
+    
     const webflowIndex = pathComponents.indexOf('webflow');
-    const pagesIndex = pathComponents.indexOf('pages');
-    if (webflowIndex === -1 || pagesIndex === -1) {
+    if (webflowIndex === -1) {
+      console.log(`[PAGES-GROUP] No 'webflow' found in path:`, path);
       return res.status(404).send('Not found: Invalid path structure');
     }
-    const pageComponents = pathComponents.slice(pagesIndex + 1);
     const webflowToken = getEffectiveWebflowToken(req);
     if (!webflowToken) {
+      console.log(`[PAGES-GROUP] No webflow token found`);
       res.status(401).json({ message: 'No Webflow token found' });
       return;
     }
+
+    // /api/webflow/pages/:pageId/dom
+    if (path.includes('/pages/') && path.endsWith('/dom')) {
+      const pagesIndex = pathComponents.indexOf('pages');
+      if (pagesIndex !== -1 && pagesIndex < pathComponents.length - 2) {
+        const pageId = pathComponents[pagesIndex + 1];
+        console.log(`[PAGES-GROUP] Getting page DOM for:`, pageId);
+        return getPageDom(req, res, pageId, webflowToken);
+      }
+    }
+
+    // /api/webflow/pages/:pageId/custom-code
+    if (path.includes('/pages/') && path.endsWith('/custom-code')) {
+      const pagesIndex = pathComponents.indexOf('pages');
+      if (pagesIndex !== -1 && pagesIndex < pathComponents.length - 2) {
+        const pageId = pathComponents[pagesIndex + 1];
+        console.log(`[PAGES-GROUP] Getting page custom code for:`, pageId);
+        return getPageCustomCode(req, res, pageId, webflowToken);
+      }
+    }
+
+    // /api/webflow/pages/:pageId (page details)
+    const pagesIndex = pathComponents.indexOf('pages');
+    if (pagesIndex !== -1 && pagesIndex < pathComponents.length - 1) {
+      const pageId = pathComponents[pagesIndex + 1];
+      // Make sure it's not an endpoint we've already handled
+      if (!path.endsWith('/dom') && !path.endsWith('/custom-code')) {
+        console.log(`[PAGES-GROUP] Getting page details for:`, pageId);
+        return getPageDetails(req, res, pageId, webflowToken);
+      }
+    }
+    
     // /api/webflow/pages
-    if (pageComponents.length === 0) {
+    if (path.endsWith('/pages')) {
+      console.log(`[PAGES-GROUP] Getting all pages`);
       return getAllPages(req, res, webflowToken);
     }
-    let pageId: string | undefined = pageComponents[0];
-    if (Array.isArray(pageId)) pageId = pageId[0];
-    if (!pageId || typeof pageId !== 'string') {
-      return res.status(400).json({ message: 'Invalid page ID' });
-    }
-    const action = pageComponents[1];
-    if (action === 'custom-code') {
-      return getPageCustomCode(req, res, pageId, webflowToken);
-    }
-    if (action === 'dom') {
-      return getPageDom(req, res, pageId, webflowToken);
-    }
-    return getPageDetails(req, res, pageId, webflowToken);
+    
+    console.log(`[PAGES-GROUP] No matching route found for:`, path);
+    res.status(404).send('Pages endpoint not found');
   } catch (error: any) {
+    console.error(`[PAGES-GROUP] Error:`, error.message);
     res.status(500).send(`Server error: ${error.message}`);
   }
 } 

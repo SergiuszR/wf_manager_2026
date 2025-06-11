@@ -1,0 +1,2301 @@
+import React, { useState, useEffect, useRef, ReactElement, useMemo } from 'react';
+import styled from 'styled-components';
+import { useAuth } from '../contexts/AuthContext';
+import { useProjectContext } from '../contexts/ProjectContext';
+import { FiCheck, FiX } from 'react-icons/fi';
+import { webflowAPI } from '../api/apiClient';
+import { Project } from './Dashboard';
+import { supabase } from '../lib/supabaseClient';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiRefreshCw } from 'react-icons/fi';
+import {
+  WebflowCollection,
+  WebflowCollectionItem,
+  ModalState,
+  EditModalState,
+  ItemDetailModalState,
+  DropdownState,
+  ItemCountsProps,
+  ItemCountBadgeProps,
+  ItemCountLabelProps,
+  ColumnToggleButtonProps
+} from '../types/webflow';
+import {
+  ActionButton as ImportedActionButton,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  CloseButton as ImportedCloseButton,
+  ModalBody,
+  ModalFooter,
+  ItemsTable as ImportedItemsTable,
+  ItemsTableHeader as ImportedItemsTableHeader,
+  ItemsTableRow as ImportedItemsTableRow,
+  ItemsTableCell as ImportedItemsTableCell,
+  ItemsTableWrapper as ImportedItemsTableWrapper,
+  ColumnToggleButton as ImportedColumnToggleButton,
+  CheckIcon as ImportedCheckIcon,
+  EditModalContent as ImportedEditModalContent,
+  EditModalHeader as ImportedEditModalHeader,
+  EditModalTitle as ImportedEditModalTitle,
+  EditModalSubtitle as ImportedEditModalSubtitle,
+  EditModalBody as ImportedEditModalBody,
+  EditModalFooter as ImportedEditModalFooter,
+  ItemStatusBadge as ImportedItemStatusBadge
+} from '../components/ui/WebflowStyledComponents';
+// Add import for react-quill
+// import ReactQuill from 'react-quill';
+// import 'react-quill/dist/quill.snow.css';
+// Add the new import for activity logging
+import { recordActivity } from '../services/activityLogService';
+import { useModalContext } from '../contexts/ModalContext';
+
+// Add these styled components at the top, before the CMSEditor component
+const CmsEditorContainer = styled.div`
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+`;
+
+const CmsHeader = styled.div`
+  margin-bottom: 2rem;
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    @media (max-width: 600px) {
+      font-size: 1.2rem;
+    }
+  }
+  p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    @media (max-width: 600px) {
+      font-size: 0.95rem;
+    }
+  }
+  @media (max-width: 600px) {
+    margin-bottom: 1rem;
+  }
+`;
+
+const FiltersContainer = styled.div`
+  display: flex;
+  margin-bottom: 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.7rem;
+  }
+`;
+
+const SearchInput = styled.input`
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  min-width: 250px;
+  @media (max-width: 600px) {
+    min-width: 0;
+    width: 100%;
+    font-size: 1em;
+    padding: 0.6rem;
+  }
+`;
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--background-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: var(--hover-color);
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: var(--error-color);
+  background-color: rgba(229, 62, 62, 0.1);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const LoadingMessage = styled.div`
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background-color: var(--background-light);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+`;
+
+const NoDataMessage = styled.div`
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background-color: var(--background-light);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+`;
+
+const CollectionsCount = styled.div`
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+`;
+
+const CollectionsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--background-light);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  @media (max-width: 600px) {
+    display: block;
+    width: 100vw;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+`;
+
+const ItemCounts = styled.span`
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const ActionButton = styled.button`
+  background: var(--background-light);
+  color: var(--primary-color);
+  border: 1.2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5em 1.1em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  margin-right: 0.5em;
+  &:hover {
+    background: var(--primary-gradient);
+    color: #fff;
+    border-color: var(--primary-color);
+  }
+`;
+
+// Create a component for editable fields list
+const FieldsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background-color: var(--background-main);
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-top: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+// Create a component for editable field item
+const FieldItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+// Create a component for editable field name
+const FieldName = styled.span`
+  font-weight: 600;
+  color: var(--text-primary);
+`;
+
+// Create a component for editable field type
+const FieldType = styled.span`
+  margin-left: 1rem;
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable field slug
+const FieldSlug = styled.span`
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable required badge
+const RequiredBadge = styled.span`
+  background-color: rgba(229, 62, 62, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--error-color);
+`;
+
+// Create a component for editable edit modal content
+const EditModalContent = styled.div`
+  background-color: var(--background-main);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 1240px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+`;
+
+// Create a component for editable edit modal header
+const EditModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background-color: var(--background-light);
+  border-bottom: 1px solid var(--border-color);
+`;
+
+// Create a component for editable edit modal title
+const EditModalTitle = styled.div`
+  display: flex;
+  flex-direction: column;
+  
+  span {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+`;
+
+// Create a component for editable edit modal subtitle
+const EditModalSubtitle = styled.div`
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable edit modal body
+const EditModalBody = styled.div`
+  padding: 1.5rem 2rem;
+  overflow: auto;
+  flex: 1;
+`;
+
+// Create a component for editable edit modal footer
+const EditModalFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background-color: var(--background-light);
+  border-top: 1px solid var(--border-color);
+`;
+
+// Create a component for editable items count
+const ItemsCount = styled.div`
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+`;
+
+// Create a component for editable column toggle container
+const ColumnToggleContainer = styled.div`
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background-color: var(--background-light);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+`;
+
+// Create a component for editable column toggle header
+const ColumnToggleHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+// Create a component for editable column toggle label
+const ColumnToggleLabel = styled.div`
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+`;
+
+// Create a component for editable column actions
+const ColumnActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+// Create a component for editable column toggle buttons
+const ColumnToggleButtons = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+`;
+
+// Create a component for editable column toggle button - updated with modern design
+const ColumnToggleButton = styled.button<ColumnToggleButtonProps>`
+  padding: 0.55rem 1rem;
+  background-color: ${props => props.$active ? 'var(--primary-color)' : 'var(--background-main)'};
+  color: ${props => props.$active ? 'white' : 'var(--text-secondary)'};
+  border: 1px solid ${props => props.$active ? 'var(--primary-color)' : 'var(--border-color)'};
+  border-radius: 24px;
+  font-size: 0.85rem;
+  font-weight: ${props => props.$active ? '600' : '500'};
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: ${props => props.$active ? '0 2px 6px rgba(99, 102, 241, 0.2)' : 'none'};
+  
+  &:hover {
+    background-color: ${props => props.$active ? 'var(--primary-hover)' : 'var(--hover-color)'};
+    border-color: ${props => props.$active ? 'var(--primary-hover)' : 'var(--primary-color)'};
+    color: ${props => props.$active ? 'white' : 'var(--primary-color)'};
+    box-shadow: ${props => props.$active ? '0 4px 10px rgba(99, 102, 241, 0.25)' : '0 2px 5px rgba(0, 0, 0, 0.05)'};
+  }
+
+  // Add max-width to prevent overflow
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+// Create a component for editable check icon
+const CheckIcon = styled.span`
+  font-size: 0.8rem;
+  font-weight: bold;
+`;
+
+// Create a component for editable items table wrapper
+const ItemsTableWrapper = styled.div`
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  
+  @media (max-width: 600px) {
+    display: none;
+  }
+`;
+
+// Create a component for editable items table container
+const ItemsTableContainer = styled.div`
+  overflow-x: auto;
+  max-height: 60vh;
+`;
+
+// Create a component for editable items table
+const ItemsTable = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background-color: var(--background-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  border: 1px solid var(--border-color);
+  
+  @media (max-width: 600px) {
+    display: block;
+    width: 100vw;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+`;
+
+// Create a component for editable items table header
+const ItemsTableHeader = styled.th`
+  position: sticky;
+  top: 0;
+  background: var(--background-light);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-color);
+  z-index: 1;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background-color 0.2s;
+`;
+
+// Create a component for editable items table row
+const ItemsTableRow = styled.tr`
+  background-color: var(--background-main);
+  
+  &:nth-child(odd) {
+    background-color: rgba(35, 35, 54, 0.4);
+  }
+  
+  &:hover {
+    background-color: var(--secondary-color);
+  }
+  
+  transition: background-color 0.15s ease;
+`;
+
+// Create a component for editable items table cell
+const ItemsTableCell = styled.td`
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 400;
+  
+  @media (max-width: 600px) {
+    font-size: 0.95em;
+    padding: 0.75rem 1rem;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+`;
+
+// Create a component for editable empty columns message
+const EmptyColumnsMessage = styled.div`
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--text-secondary);
+  font-style: italic;
+  background-color: var(--background-light);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color);
+`;
+
+// Create a component for editable detail link
+const DetailLink = styled.button`
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  
+  &:hover {
+    background: var(--background-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+`;
+
+// Create a component for rich text display
+const RichTextContainer = styled.div`
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+`;
+
+// Create a component for editable rich text preview
+const RichTextPreview = styled.div`
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--background-card);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  width: -webkit-fill-available;
+  color: var(--text-primary);
+  
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  
+  h1 {
+    font-size: 1.3rem;
+  }
+  
+  h2 {
+    font-size: 1.1rem;
+  }
+  
+  h3 {
+    font-size: 1rem;
+  }
+  
+  p {
+    margin-bottom: 0.5rem;
+  }
+  
+  ul, ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+  
+  li {
+    margin-bottom: 0.25rem;
+  }
+  
+  pre, code {
+    background-color: var(--background-main);
+    padding: 0.25rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+  }
+  
+  pre {
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    overflow-x: auto;
+  }
+  
+  blockquote {
+    border-left: 3px solid var(--border-color);
+    padding-left: 0.75rem;
+    margin: 0.5rem 0;
+    font-style: italic;
+  }
+  
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+`;
+
+// Create a component for editable show raw HTML button
+const ShowRawHtmlButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: rgba(66, 153, 225, 0.1);
+    color: var(--primary-hover);
+  }
+`;
+
+// Create a component for editable raw HTML content
+const RawHtmlContent = styled.pre`
+  background-color: var(--background-main);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  overflow: auto;
+  font-size: 0.8rem;
+`;
+
+// Create a component for editable expandable text
+const ExpandableText = styled.span`
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable show more button
+const ShowMoreButton = styled.button`
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+  transition: color 0.2s;
+  
+  &:hover {
+    color: var(--primary-hover);
+  }
+`;
+
+// Create a component for editable array container
+const ArrayContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: 100%;
+  background-color: var(--background-main);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+`;
+
+// Create a component for editable array item
+const ArrayItem = styled.span`
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 0.4rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+// Create a component for editable pre formatted JSON
+const PreFormattedJson = styled.pre`
+  background-color: var(--background-main);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  font-family: monospace;
+  max-height: 300px;
+`;
+
+// Create a component for editable empty value
+const EmptyValue = styled.span`
+  color: var(--text-secondary);
+  font-style: italic;
+  opacity: 0.7;
+`;
+
+// Create a component for editable item detail grid
+const ItemDetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  position: relative;
+`;
+
+// Create a component for editable item detail section
+const ItemDetailSection = styled.div`
+  margin-bottom: 2rem;
+  background-color: var(--background-main);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+`;
+
+// Create a component for editable item detail section title
+const ItemDetailSectionTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: "";
+    display: inline-block;
+    width: 3px;
+    height: 1rem;
+    background: var(--primary-color);
+    margin-right: 0.75rem;
+    border-radius: 2px;
+  }
+`;
+
+// Create a component for editable item detail table
+const ItemDetailTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--background-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  table-layout: fixed;
+`;
+
+// Create a component for editable item detail row
+const ItemDetailRow = styled.tr`
+  td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+    transition: background 0.2s;
+    position: relative;
+  }
+  &:hover td {
+    background: var(--hover-color);
+  }
+  &.editing td {
+    background: var(--primary-color-light, #e6f0fa);
+    border-left: 4px solid var(--primary-color);
+  }
+`;
+
+// Create a component for editable item detail label
+const ItemDetailLabel = styled.td`
+  flex: 1 1 30%;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+`;
+
+// Create a component for editable item detail value
+const ItemDetailValue = styled.td`
+  flex: 2 1 60%;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  word-break: break-word;
+`;
+
+// Create a component for editable item status badge
+const ItemStatusBadge = styled.span<{ $status: string }>`
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background-color: ${props => 
+    props.$status === 'published' ? 'rgba(72, 187, 120, 0.1)' :
+    props.$status === 'draft' ? 'rgba(237, 137, 54, 0.1)' :
+    'rgba(66, 153, 225, 0.1)'
+  };
+  color: ${props => 
+    props.$status === 'published' ? 'var(--success-color)' :
+    props.$status === 'draft' ? 'var(--warning-color)' :
+    'var(--info-color)'
+  };
+`;
+
+// Create a component for editable image field container
+const ImageFieldContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.2rem 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+`;
+
+const ImageThumbnail = styled.img`
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  border: 2.5px solid #f3f4f6;
+  background: #fff;
+  transition: box-shadow 0.18s, transform 0.18s;
+  &:hover {
+    box-shadow: 0 4px 16px rgba(99,102,241,0.13);
+    transform: scale(1.04);
+  }
+`;
+
+const ImageDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #444;
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+`;
+
+// Create a component for editable item detail modal content
+const ItemDetailModalContent = styled(ModalContent)`
+  width: 95%;
+  max-width: 1000px;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+`;
+
+// Create a component for editable item detail modal header
+const ItemDetailModalHeader = styled(ModalHeader)`
+  padding: 1.5rem 2rem;
+  background-color: var(--background-light);
+  border-bottom: 1px solid var(--border-color);
+`;
+
+// Create a component for editable item detail modal title
+const ItemDetailModalTitle = styled.div`
+  display: flex;
+  flex-direction: column;
+  
+  span {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+`;
+
+// Create a component for editable item detail modal subtitle
+const ItemDetailModalSubtitle = styled.span`
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+`;
+
+// Create a component for editable close button
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: color 0.2s;
+  width: 1.25rem;
+  
+  &:hover {
+    color: var(--text-primary);
+  }
+`;
+
+// Create a component for editable modal body
+const ItemDetailModalBody = styled(ModalBody)`
+  padding: 2rem;
+  background-color: var(--background-main);
+`;
+
+// Create a component for editable modal footer
+const ItemDetailModalFooter = styled(ModalFooter)`
+  padding: 1.25rem 1.5rem;
+`;
+
+// Create a component for editable modal description
+const ModalDescription = styled.p`
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+`;
+
+// Create a component for editable modal actions
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`;
+
+// Create a component for editable loading container
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  min-height: 300px;
+`;
+
+// Create a component for editable loading text
+const LoadingText = styled.p`
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+`;
+
+// Create a component for editable error container
+const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  min-height: 300px;
+  color: var(--error-color);
+`;
+
+// Create a component for editable error icon
+const ErrorIcon = styled.div`
+  font-size: 2rem;
+  margin-bottom: 1rem;
+`;
+
+// Create a component for editable empty state container
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  min-height: 300px;
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable empty state icon
+const EmptyStateIcon = styled.div`
+  font-size: 2rem;
+  margin-bottom: 1rem;
+`;
+
+// Create a component for editable empty state message
+const EmptyStateMessage = styled.p`
+  text-align: center;
+  max-width: 400px;
+  font-size: 0.875rem;
+`;
+
+// Create a component for editable details grid
+const DetailsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+`;
+
+// Create a component for editable detail item
+const DetailItem = styled.div<{ span?: number }>`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  ${props => props.span && `grid-column: span ${props.span};`}
+  
+  strong {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+`;
+
+// Create a component for editable detail label
+const DetailLabel = styled.label`
+  font-weight: 600;
+  color: var(--text-primary);
+`;
+
+// Create a component for editable detail value
+const DetailValue = styled.span`
+  margin-left: 1rem;
+  color: var(--text-secondary);
+`;
+
+// Create a component for editable status badge
+const StatusBadge = styled.span<{ $status: string }>`
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background-color: ${props => 
+    props.$status === 'published' ? 'rgba(72, 187, 120, 0.1)' :
+    props.$status === 'draft' ? 'rgba(237, 137, 54, 0.1)' :
+    'rgba(66, 153, 225, 0.1)'
+  };
+  color: ${props => 
+    props.$status === 'published' ? 'var(--success-color)' :
+    props.$status === 'draft' ? 'var(--warning-color)' :
+    'var(--info-color)'
+  };
+`;
+
+// Create a component for editable toggle container
+const EditToggleContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+// Create a component for editable toggle label
+const EditToggleLabel = styled.label`
+  font-weight: 600;
+  color: var(--text-primary);
+`;
+
+// Create a component for editable toggle
+const EditToggle = styled.input`
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+`;
+
+// Create a component for editable text field
+const EditTextField = styled.input`
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--background-main);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: -webkit-fill-available;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color);
+  }
+`;
+
+// Create a component for editable text area
+const EditTextArea = styled.textarea`
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--background-main);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: -webkit-fill-available;
+  min-height: 100px;
+  margin-bottom: 0.75rem;
+  resize: vertical;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color);
+  }
+`;
+
+// Modern edit icon button
+const EditButton = styled.button`
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  height: 24px;
+  width: 24px;
+  
+  &:hover {
+    color: var(--primary-color);
+    opacity: 1;
+    border-color: var(--primary-color);
+  }
+`;
+
+// Create a component for editable color picker
+const EditColorPicker = styled.input`
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+`;
+
+// Define styled components for editable fields
+const EditFieldContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.2rem 0 0.2rem 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+`;
+
+const EditColorContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const EditColorSwatch = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+`;
+
+const EditColorInput = styled.input`
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-light);
+  }
+`;
+
+// Create a component for editable color field container
+const ColorFieldContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+// Create a component for editable color value
+const ColorValue = styled.span`
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--background-main);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+`;
+
+// Create a component for editable color swatch
+const ColorSwatch = styled.div<{ $color: string }>`
+  width: 32px;
+  height: 32px;
+  background-color: ${props => props.$color};
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+`;
+
+// Create a component for editable field actions
+const EditFieldActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+`;
+
+// Create a component for editable field button
+const EditFieldButton = styled.button<{ $primary?: boolean }>`
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: ${({ $primary }) => $primary ? 'var(--primary-color)' : 'transparent'};
+  color: ${({ $primary }) => $primary ? '#fff' : 'var(--text-secondary)'};
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${({ $primary }) => $primary ? 'var(--primary-hover)' : 'var(--background-light)'};
+    color: ${({ $primary }) => $primary ? '#fff' : 'var(--primary-color)'};
+    border-color: ${({ $primary }) => $primary ? 'var(--primary-hover)' : 'var(--primary-color)'};
+  }
+`;
+
+// Add these styled components for the enhanced item detail modal
+const ItemDetailModalWrapper = styled(ItemDetailModalContent)`
+  width: 100%;
+  max-width: 1000px;
+  min-width: 600px;
+  max-height: 92vh;
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  background-color: var(--background-main);
+  border: 1px solid var(--border-color);
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient);
+  }
+  
+  @media (max-width: 768px) {
+    min-width: unset;
+    width: 95%;
+  }
+`;
+
+const ItemDetailModalHeaderStyled = styled(ItemDetailModalHeader)`
+  padding: 0.8rem 1.25rem;
+  background: var(--background-light);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ItemDetailModalTitleStyled = styled(ItemDetailModalTitle)`
+  span {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+`;
+
+const ItemDetailModalSubtitleStyled = styled(ItemDetailModalSubtitle)`
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+`;
+
+const ItemDetailModalBodyStyled = styled(ItemDetailModalBody)`
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: var(--background-main);
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+  }
+`;
+
+const ItemDetailModalFooterStyled = styled(ItemDetailModalFooter)`
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--background-light);
+  display: flex;
+  justify-content: space-between;
+`;
+
+const ItemDetailHeaderActions = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+// Field type label with improved styling
+const FieldTypeLabel = styled.span`
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--background-light);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+`;
+
+// System field tag with improved styling
+const SystemFieldTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  background: var(--background-light);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+`;
+
+interface EditModeButtonProps {
+  disabled?: boolean;
+}
+
+const EditModeButton = styled.button<EditModeButtonProps>`
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.7rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover, &:focus {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
+
+const SaveButton = styled(ImportedActionButton)`
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  
+  &:hover {
+    background-color: var(--primary-hover);
+  }
+`;
+
+const CancelButton = styled(ImportedActionButton)`
+  background-color: transparent;
+  color: var(--text-secondary);
+  
+  &:hover {
+    background-color: var(--hover-color);
+  }
+`;
+
+// --- Normalization utility for Webflow API v2 item data ---
+function normalizeWebflowItem(item: any): any {
+  if (!item) return item;
+  // If item has fieldData, flatten it into the root object
+  if (item.fieldData && typeof item.fieldData === 'object') {
+    return {
+      ...item,
+      ...item.fieldData,
+    };
+  }
+  return item;
+}
+
+// Utility to prettify a slug
+function prettifySlug(slug: string): string {
+  return slug
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Utility to format cell values
+function formatCellValue(value: any, column: string): React.ReactNode {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? '✔️' : '✖️';
+  if (typeof value === 'string' && value.match(/^https?:\/\//) && (column.includes('image') || column.includes('img'))) {
+    return <img src={value} alt={column} style={{ maxWidth: 40, maxHeight: 40, borderRadius: 4 }} />;
+  }
+  if (typeof value === 'string' && value.length > 50) {
+    return <span title={value}>{value.substring(0, 50)}...</span>;
+  }
+  if (typeof value === 'object') {
+    if (value.url && (column.includes('image') || column.includes('img'))) {
+      return <img src={value.url} alt={column} style={{ maxWidth: 40, maxHeight: 40, borderRadius: 4 }} />;
+    }
+    return <span title={JSON.stringify(value)}>{JSON.stringify(value).substring(0, 50)}...</span>;
+  }
+  // Format dates
+  if (typeof value === 'string' && (column.toLowerCase().includes('date') || column.toLowerCase().includes('updated') || column.toLowerCase().includes('created'))) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return d.toLocaleString();
+  }
+  return String(value);
+}
+
+// Add new styled components for flexbox-based field rows
+const ItemDetailFlexRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-main);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+  
+  &:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+  
+  &.editing, &:focus-within {
+    background: var(--background-light);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border-left: 2px solid var(--primary-color);
+  }
+`;
+
+const ItemDetailFlexLabel = styled.div`
+  min-width: 120px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-top: 0.25rem;
+  flex-shrink: 0;
+`;
+
+const ItemDetailFlexValue = styled.div`
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+`;
+
+// For rich text and image fields, use a card-like container
+const FieldCard = styled.div`
+  background: #fafbfc;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  border: 1px solid var(--border-color, #e5e7eb);
+  padding: 0.8rem 1.1rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.95rem;
+`;
+
+// Utility to extract all unique fieldData keys from items
+function extractFieldDataColumns(items: WebflowCollectionItem[]): string[] {
+  const fieldKeys = new Set<string>();
+  items.forEach(item => {
+    if (item.fieldData && typeof item.fieldData === 'object') {
+      Object.keys(item.fieldData).forEach(key => fieldKeys.add(key));
+    }
+  });
+  return Array.from(fieldKeys);
+}
+
+// Utility to flatten item for table row
+function flattenItem(item: WebflowCollectionItem, fieldColumns: string[]): any {
+  const flat: any = { ...item };
+  if (item.fieldData && typeof item.fieldData === 'object') {
+    fieldColumns.forEach(key => {
+      flat[key] = item.fieldData[key];
+    });
+  }
+  return flat;
+}
+
+// Add styled badges for item counts
+const ItemCountsContainer = styled.div`
+  display: flex;
+  gap: 6px;
+  align-items: center;
+`;
+const ItemCountBadge = styled.span<{ $type: 'all' | 'staged' | 'live' | 'draft' }>`
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-weight: 500;
+  background: ${({ $type }) =>
+    $type === 'all' ? 'rgba(75, 85, 99, 0.1)' :
+    $type === 'staged' ? 'rgba(59, 130, 246, 0.1)' :
+    $type === 'live' ? 'rgba(16, 185, 129, 0.1)' :
+    'rgba(245, 158, 11, 0.1)'};
+  color: ${({ $type }) =>
+    $type === 'all' ? '#4b5563' :
+    $type === 'staged' ? '#3b82f6' :
+    $type === 'live' ? '#10b981' :
+    '#f59e0b'};
+  border: 1px solid ${({ $type }) =>
+    $type === 'all' ? 'rgba(75, 85, 99, 0.2)' :
+    $type === 'staged' ? 'rgba(59, 130, 246, 0.2)' :
+    $type === 'live' ? 'rgba(16, 185, 129, 0.2)' :
+    'rgba(245, 158, 11, 0.2)'};
+  margin-right: 6px;
+`;
+
+// 1. Responsive card/list view for items on mobile
+const ItemsCardList = styled.div`
+  display: none;
+  
+  @media (max-width: 600px) {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.5rem;
+  }
+`;
+const ItemCard = styled.div`
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+`;
+const ItemCardHeader = styled.div`
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-main);
+`;
+const ItemCardTitle = styled.h4`
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+const ItemCardContent = styled.div`
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+const ItemCardField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+const ItemCardFieldLabel = styled.div`
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+`;
+const ItemCardFieldValue = styled.div`
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+const ItemCardFooter = styled.div`
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+`;
+
+// 2. Full-screen modals for mobile
+/* 
+const FullScreenModalContent = styled(ModalContent)`
+  @media (max-width: 600px) {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: 100vh;
+    max-height: 100vh;
+    border-radius: 0 !important;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+`;
+const StickyModalHeader = styled(ModalHeader)`
+  @media (max-width: 600px) {
+    position: sticky;
+    top: 0;
+    background: var(--background-light);
+    z-index: 10;
+    padding: 1.2rem 1rem;
+    border-radius: 0;
+  }
+`;
+const StickyModalFooter = styled(ModalFooter)`
+  @media (max-width: 600px) {
+    position: sticky;
+    bottom: 0;
+    background: var(--background-light);
+    z-index: 10;
+    padding: 1.2rem 1rem;
+    border-radius: 0;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+  }
+`;
+*/
+
+// 3. Field editing redesign for mobile
+const MobileFieldEditContainer = styled(EditFieldContainer)`
+  @media (max-width: 600px) {
+    padding: 1.1rem 0.7rem;
+    border-radius: 0.7rem;
+    margin-bottom: 1.2rem;
+    background: var(--background-main);
+    box-shadow: var(--box-shadow);
+    border: 1.5px solid var(--primary-color-light);
+  }
+`;
+const MobileEditFieldButton = styled(EditFieldButton)`
+  @media (max-width: 600px) {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.1em;
+    border-radius: 0.5rem;
+    padding: 0.7rem 1.2rem;
+  }
+`;
+
+// 4. Make all buttons and actions at least 44x44px
+const LargeButton = styled.button`
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.1em;
+  border-radius: 0.5rem;
+  padding: 0.7rem 1.2rem;
+`;
+
+// 5. Increase font sizes and paddings for mobile
+const MobileFont = styled.div`
+  @media (max-width: 600px) {
+    font-size: 1.08em;
+    line-height: 1.5;
+  }
+`;
+
+// 6. Collapse filters/column toggles into accordions on mobile
+const Accordion = styled.details`
+  @media (max-width: 600px) {
+    width: 100vw;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    background: var(--background-light);
+    border-radius: 0.7rem;
+    margin-bottom: 1rem;
+    summary {
+      font-weight: 600;
+      font-size: 1.1em;
+      padding: 1rem;
+      cursor: pointer;
+    }
+  }
+`;
+
+// Define LoadingSpinner component
+const LoadingSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+// Define the FullScreenModalBody component
+const FullScreenModalBody = styled(ModalBody)`
+  max-height: calc(90vh - 130px);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--background-main);
+  
+  @media (max-width: 767px) {
+    max-height: calc(100vh - 130px);
+    padding: 1rem;
+  }
+`;
+
+/* These components are causing duplicate declarations, commenting out
+// Define FullScreenModalContent
+const FullScreenModalContent = styled(ModalContent)`
+  width: 95%;
+  max-width: 1400px;
+  
+  @media (max-width: 767px) {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+`;
+
+// Define StickyModalHeader
+const StickyModalHeader = styled(ModalHeader)`
+  position: sticky;
+  top: 0;
+  z-index: 10;
+`;
+
+// Define StickyModalFooter
+const StickyModalFooter = styled(ModalFooter)`
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--background-light);
+  justify-content: space-between;
+`;
+*/
+
+// Helper function to format values for display
+const formatValue = (value: any): string => {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) return value.join(', ');
+    return JSON.stringify(value);
+  }
+  return String(value);
+};
+
+// Move EditFieldContainer, FileInputLabel, FileInput, and ToggleSwitch styled components up
+// before EnhancedItemDetailModal
+const EditFieldContainer = styled.div`
+  position: relative;
+  margin-bottom: 1.5rem;
+  background: var(--background-light);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 1rem;
+`;
+
+const FileInputLabel = styled.label`
+  display: inline-block;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  
+  &:hover {
+    background: var(--primary-hover);
+  }
+`;
+
+const FileInput = styled.input`
+  display: none;
+`;
+
+// Modern toggle switch for boolean fields
+const ToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  span {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 28px;
+  }
+  span:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  input:checked + span {
+    background-color: var(--primary-color);
+  }
+  input:checked + span:before {
+    transform: translateX(20px);
+  }
+`;
+
+// Define the ItemDetailModalState type that was previously inferred
+interface ItemDetailModalState {
+  isOpen: boolean;
+  collection: WebflowCollection | null;
+  item: WebflowCollectionItem | null;
+  itemDetails: any;
+  isLoading: boolean;
+  editMode: boolean;
+  editingFields: Record<string, boolean>;
+  fieldEdits: Record<string, any>;
+  isSaving: boolean;
+  error?: string;
+}
+
+// Component for rich text display
+const RichTextField = ({ value }: { value: string }) => {
+  const [isHtmlExpanded, setIsHtmlExpanded] = useState(false);
+  return (
+    <RichTextContainer>
+      <RichTextPreview dangerouslySetInnerHTML={{ __html: value }} />
+      {isHtmlExpanded ? (
+        <>
+          <RawHtmlContent>{value}</RawHtmlContent>
+          <ShowRawHtmlButton onClick={() => setIsHtmlExpanded(false)}>
+            Hide Raw HTML
+          </ShowRawHtmlButton>
+        </>
+      ) : (
+        <ShowRawHtmlButton onClick={() => setIsHtmlExpanded(true)}>
+          View Raw HTML
+        </ShowRawHtmlButton>
+      )}
+    </RichTextContainer>
+  );
+};
+
+// Replace EditableRichTextField component
+const EditableRichTextField = ({
+  value,
+  fieldName,
+  isEditing,
+  onChange,
+  onSave,
+  onCancel,
+  webflowSiteId,
+  projectToken
+}: {
+  value: string,
+  fieldName: string,
+  isEditing: boolean,
+  onChange: (value: string) => void,
+  onSave: () => void,
+  onCancel: () => void,
+  webflowSiteId: string,
+  projectToken: string
+}) => {
+  const editableRef = useRef<HTMLDivElement>(null);
+  const [localValue, setLocalValue] = React.useState(value);
+  const [uploading, setUploading] = useState(false);
+
+  React.useEffect(() => {
+    if (isEditing) setLocalValue(value);
+  }, [isEditing, value]);
+
+  const insertImageAtCursor = (url: string) => {
+    if (editableRef.current) {
+      editableRef.current.focus();
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.style.maxWidth = '100%';
+      img.style.borderRadius = '4px';
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.collapse(false);
+        range.insertNode(img);
+        // Move cursor after image
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        editableRef.current.appendChild(img);
+      }
+    }
+  };
+
+  const handleImageInsert = async (file: File) => {
+    if (!projectToken || !webflowSiteId) {
+      alert('Webflow site is not ready yet. Please wait and try again.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fileBuffer = await file.arrayBuffer();
+      // @ts-ignore
+      const SparkMD5 = (await import('spark-md5')).default;
+      const fileHash = SparkMD5.ArrayBuffer.hash(fileBuffer);
+      const metaRes = await webflowAPI.createAssetMetadata(
+        webflowSiteId,
+        file.name,
+        fileHash,
+        projectToken
+      );
+      const { uploadUrl, uploadDetails } = metaRes.data;
+      const s3Form = new FormData();
+      Object.entries(uploadDetails).forEach(([key, value]) => {
+        s3Form.append(key, value as string);
+      });
+      s3Form.append('file', file);
+      await fetch(uploadUrl, { method: 'POST', body: s3Form });
+      const hostedUrl = metaRes.data.hostedUrl || `https://${uploadDetails.bucket}.s3.amazonaws.com/${uploadDetails.key}`;
+      insertImageAtCursor(hostedUrl);
+      if (editableRef.current) {
+        setLocalValue(editableRef.current.innerHTML);
+        onChange(editableRef.current.innerHTML);
+      }
+    } catch (err) {
+      alert('Image upload failed: ' + ((err as any)?.message || String(err)));
+    }
+    setUploading(false);
+  };
+
+  if (!isEditing) {
+    return <RichTextField value={value} />;
+  }
+  
+  const handleSave = () => {
+    if (editableRef.current) {
+      const html = editableRef.current.innerHTML;
+      setLocalValue(html);
+      onChange(html);
+      onSave(); // exit edit mode
+    }
+  };
+  
+  const handleCancel = () => {
+    setLocalValue(value);
+    onCancel(); // exit edit mode
+  };
+  
+  // Modern rich text editor container (contenteditable)
+  const ModernContentEditable = styled.div`
+    min-height: 150px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--background-main);
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    outline: none;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+    width: -webkit-fill-available;
+    
+    &:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 1px var(--primary-color);
+    }
+  `;
+  
+  // Add toolbar button for rich text
+  const ToolbarButton = styled.button`
+    background: var(--background-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.8em;
+    min-height: 1.8em;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+  `;
+  
+  // Fix for editing in the modal - use this specific call for rich text
+  const handleLocalToolbarClick = (command: string, value?: string) => {
+    if (editableRef.current) {
+      editableRef.current.focus();
+      document.execCommand(command, false, value);
+      setLocalValue(editableRef.current.innerHTML);
+      onChange(editableRef.current.innerHTML);
+    }
+  };
+  
+  return (
+    <div>
+      <div style={{ marginBottom: '0.5rem' }}>
+        {[1,2,3,4,5,6].map(h => (
+          <ToolbarButton key={h} type="button" onClick={() => handleLocalToolbarClick('formatBlock', `<h${h}>`)}>
+            <span style={{fontWeight:'bold',fontSize: h === 1 ? '1.2em' : undefined}}>{`H${h}`}</span>
+          </ToolbarButton>
+        ))}
+        <ToolbarButton type="button" onClick={() => handleLocalToolbarClick('formatBlock', '<p>')}>P</ToolbarButton>
+        <ToolbarButton type="button" onClick={() => handleLocalToolbarClick('bold')}><b>B</b></ToolbarButton>
+        <ToolbarButton type="button" onClick={() => handleLocalToolbarClick('italic')}><i>I</i></ToolbarButton>
+        <ToolbarButton type="button" onClick={() => handleLocalToolbarClick('underline')}><u>U</u></ToolbarButton>
+        <ToolbarButton 
+          type="button" 
+          onClick={() => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.onchange = (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (file) handleImageInsert(file);
+            };
+            fileInput.click();
+          }} 
+          title="Insert Image" 
+          disabled={!webflowSiteId || uploading}
+        >
+          🖼️
+        </ToolbarButton>
+      </div>
+      <ModernContentEditable
+        ref={editableRef}
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck
+        dangerouslySetInnerHTML={{ __html: localValue }}
+        aria-label={fieldName}
+        onInput={(e) => {
+          const html = (e.target as HTMLDivElement).innerHTML;
+          setLocalValue(html);
+          onChange(html);
+        }}
+      />
+      {uploading && <div style={{ color: 'var(--primary-color)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Uploading image...</div>}
+      {!webflowSiteId && <div style={{ color: 'var(--danger-color)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Webflow site is not ready yet. Please wait...</div>}
+      <EditFieldActions>
+        <EditFieldButton onClick={handleSave} $primary>
+          Save
+        </EditFieldButton>
+        <EditFieldButton onClick={handleCancel}>
+          Cancel
+        </EditFieldButton>
+      </EditFieldActions>
+    </div>
+  );
+};
+
+// Memoize the EnhancedItemDetailModal component for performance
+const MemoizedItemDetailModal = React.memo(({ 
+  itemDetailModal, 
+  closeModal, 
+  onEdit, 
+  handleSaveField, 
+  handleCancelEdit, 
+  handleFieldChange,
+  webflowSiteId,
+  selectedProject
+}) => {
+  if (!itemDetailModal.isOpen) return null;
+
+  // Use a stable reference for findMatchingKey to avoid recreating it on every render
+  const findMatchingKey = React.useCallback((slug, item) => {
+    if (item.hasOwnProperty(slug)) return slug;
+    const camel = slug.replace(/-([a-z])/g, (_substring, group) => group.toUpperCase());
+    if (item.hasOwnProperty(camel)) return camel;
+    const snake = slug.replace(/-/g, '_');
+    if (item.hasOwnProperty(snake)) return snake;
+    if (item.hasOwnProperty(slug.toLowerCase())) return slug.toLowerCase();
+    if (item.hasOwnProperty(slug.toUpperCase())) return slug.toUpperCase();
+    const noDash = slug.replace(/-/g, '');
+    if (item.hasOwnProperty(noDash)) return noDash;
+    return slug;
+  }, []);
+
+  // List of system fields that cannot be edited
+  const systemFields = [
+    'cmsLocaleId', 'lastPublished', 'lastUpdated', 'createdOn', 
+    'isArchived', 'isDraft', 'slug', '_id', 'id', '_draft', '_archived',
+    'updatedOn', 'updatedBy', 'createdBy'
+  ];
+  
+  const isFieldEditable = (key) => {
+    return !systemFields.some(field => 
+      key.toLowerCase() === field.toLowerCase()
+    );
+  };
+  
+  return (
+    <ModalOverlay onClick={() => closeModal()}>
+      <ItemDetailModalWrapper onClick={e => e.stopPropagation()}>
+        <ItemDetailModalHeaderStyled>
+          <ItemDetailModalTitleStyled>
+            <span>{itemDetailModal.itemDetails?.name || 'Item Details'}</span>
+            {itemDetailModal.collection && (
+              <ItemDetailModalSubtitleStyled>
+                Collection: {itemDetailModal.collection.name}
+              </ItemDetailModalSubtitleStyled>
+            )}
+          </ItemDetailModalTitleStyled>
+          <ImportedCloseButton onClick={() => closeModal()}>×</ImportedCloseButton>
+        </ItemDetailModalHeaderStyled>
+        <ItemDetailModalBodyStyled>
+          {itemDetailModal.isLoading ? (
+            <LoadingContainer>
+              <LoadingSpinner />
+              <LoadingText>Loading item details...</LoadingText>
+            </LoadingContainer>
+          ) : itemDetailModal.error ? (
+            <ErrorContainer>
+              <ErrorIcon>⚠️</ErrorIcon>
+              <div>{itemDetailModal.error}</div>
+            </ErrorContainer>
+          ) : itemDetailModal.itemDetails && itemDetailModal.collection?.fields ? (
+            <ItemDetailGrid>
+              <ItemDetailSection>
+                <ItemDetailSectionTitle>Item Fields</ItemDetailSectionTitle>
+                {itemDetailModal.collection.fields.map((field) => {
+                  const itemKey = findMatchingKey(field.slug, itemDetailModal.itemDetails);
+                  const value = itemDetailModal.itemDetails[itemKey];
+                  const isEditing = itemDetailModal.editingFields[field.slug];
+                  const currentValue = itemDetailModal.fieldEdits[field.slug] ?? value;
+                  
+                  return (
+                    <ItemDetailFlexRow 
+                      key={field.slug} 
+                      className={isEditing ? 'editing' : ''} 
+                      style={{alignItems:'center',gap:'1.5rem'}}
+                    >
+                      <ItemDetailFlexLabel style={{minWidth:'140px'}}>
+                        {prettifySlug(field.slug)}
+                        {field.required && <SystemFieldTag>Required</SystemFieldTag>}
+                        {field.type && <SystemFieldTag>{field.type}</SystemFieldTag>}
+                      </ItemDetailFlexLabel>
+                      <ItemDetailFlexValue style={{display:'flex',alignItems:'center',width:'100%'}}>
+                        {isEditing ? (
+                          <FieldEditor 
+                            field={field}
+                            value={currentValue}
+                            onSave={() => handleSaveField(field.slug)}
+                            onCancel={() => handleCancelEdit(field.slug)}
+                            onChange={(value) => handleFieldChange(field.slug, value)}
+                            webflowSiteId={webflowSiteId}
+                            projectToken={selectedProject?.token || ''}
+                          />
+                        ) : (
+                          <FieldDisplay 
+                            field={field}
+                            value={value}
+                          />
+                        )}
+                        
+                        {!isEditing && isFieldEditable(field.slug) && (
+                          <EditButton
+                            onClick={() => onEdit(field.slug)}
+                            aria-label={`Edit ${field.slug}`}
+                            title={`Edit ${prettifySlug(field.slug)}`}
+                            style={{marginLeft:'auto',marginRight:'0.5rem',height:'32px',width:'32px',display:'flex',alignItems:'center',justifyContent:'center'}}
+                          >
+                            <FiEdit />
+                          </EditButton>
+                        )}
+                      </ItemDetailFlexValue>
+                    </ItemDetailFlexRow>
+                  );
+                })}
+              </ItemDetailSection>
+            </ItemDetailGrid>
+          ) : (
+            <EmptyStateContainer>
+              <EmptyStateIcon>📄</EmptyStateIcon>
+              <EmptyStateMessage>No details available</EmptyStateMessage>
+            </EmptyStateContainer>
+          )}
+        </ItemDetailModalBodyStyled>
+        <ItemDetailModalFooterStyled>
+          <ImportedActionButton onClick={() => closeModal()}>Close</ImportedActionButton>
+          {itemDetailModal.itemDetails && !itemDetailModal.editMode && (
+            <EditModeButton 
+              onClick={() => onEdit('all')}
+              disabled={itemDetailModal.isSaving}
+            >
+              <FiEdit /> Edit Item
+            </EditModeButton>
+          )}
+        </ItemDetailModalFooterStyled>
+      </ItemDetailModalWrapper>
+    </ModalOverlay>
+  );
+});
+
+// These helper components will be defined outside the main MemoizedItemDetailModal 
+// to avoid recreating them on each render
+const FieldEditor = React.memo(({ field, value, onChange, onSave, onCancel, webflowSiteId, projectToken }) => {
+  const fieldType = field.type?.toLowerCase();
+  const isImage = fieldType === 'image' || field.slug.toLowerCase().includes('image');
+  const isRichText = fieldType === 'richtext' || field.slug.toLowerCase().includes('content') || 
+                     (typeof value === 'string' && (value.includes('<p>') || value.includes('<h1>')));
+  const isBoolean = typeof value === 'boolean';
+  
+  if (isImage) {
+    return (
+      <EditFieldContainer style={{width:'100%',background:'var(--background-light)',border:'none',borderRadius:'8px',padding:'0.5rem 0.75rem',margin:'0'}}>
+        {typeof value === 'string' && value.match(/^https?:\\/\\//) && (
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <img 
+                src={value} 
+                alt={\`Current \${field.slug}\`} 
+                style={{ maxWidth: '120px', maxHeight: '120px', borderRadius: '8px', border: '1px solid var(--border-color)' }} 
+              />
+            </div>
+          </div>
+        )}
+        <FileInputLabel>
+          Upload New Image
+          <FileInput 
+            type="file" 
+            accept="image/*" 
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file && projectToken && webflowSiteId) {
+                try {
+                  const fileBuffer = await file.arrayBuffer();
+                  // @ts-ignore
+                  const SparkMD5 = (await import('spark-md5')).default;
+                  const fileHash = SparkMD5.ArrayBuffer.hash(fileBuffer);
+                  const metaRes = await webflowAPI.createAssetMetadata(
+                    webflowSiteId,
+                    file.name,
+                    fileHash,
+    <MobileFont>
+      <CmsEditorContainer>
+        {/* ... rest of your JSX ... */}
+        
+        {/* Use the EnhancedItemDetailModal component with necessary props */}
+        {itemDetailModal.isOpen && (
+          <EnhancedItemDetailModal 
+            itemDetailModal={itemDetailModal}
+            closeItemDetailModal={closeItemDetailModal}
+            handleEdit={handleEditField}
+            handleSaveField={handleSaveField}
+            handleCancelEdit={handleCancelEdit}
+            handleFieldChange={handleFieldChange}
+            webflowSiteId={webflowSiteId}
+            selectedProject={selectedProject}
+          />
+        )}
+      </CmsEditorContainer>
+    </MobileFont>
+  );
+};
+
+export default CMSEditor;
