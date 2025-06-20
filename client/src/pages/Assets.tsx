@@ -128,7 +128,9 @@ const Assets: React.FC = () => {
     'audio': true,
     'other': true
   });
+  const [altTextFilter, setAltTextFilter] = useState<'all' | 'with-alt' | 'without-alt'>('all');
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [gridSize, setGridSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [editingAltText, setEditingAltText] = useState(false);
   const [altTextInput, setAltTextInput] = useState('');
   const [altTextLoading, setAltTextLoading] = useState(false);
@@ -165,7 +167,7 @@ const Assets: React.FC = () => {
     }
   }, [selectedSite, selectedProject]);
 
-  // Filter assets when search term, assets, or type filters change
+  // Filter assets when search term, assets, type filters, or alt text filter change
   useEffect(() => {
     // Apply filtering and sorting
     let result = [...assets];
@@ -180,6 +182,13 @@ const Assets: React.FC = () => {
           asset.mimeType?.toLowerCase().includes(term) ||
           asset.altText?.toLowerCase().includes(term)
       );
+    }
+    
+    // Filter by alt text presence
+    if (altTextFilter === 'with-alt') {
+      result = result.filter((asset: WebflowAsset) => asset.altText && asset.altText.trim().length > 0);
+    } else if (altTextFilter === 'without-alt') {
+      result = result.filter((asset: WebflowAsset) => !asset.altText || asset.altText.trim().length === 0);
     }
     
     // Check if any type filter is enabled
@@ -239,7 +248,7 @@ const Assets: React.FC = () => {
     });
     
     setFilteredAssets(result);
-  }, [assets, searchTerm, sortConfig, typeFilters]);
+  }, [assets, searchTerm, sortConfig, typeFilters, altTextFilter]);
 
   const fetchAssets = async (siteId: string) => {
     if (!selectedProject?.token) return;
@@ -564,10 +573,20 @@ const Assets: React.FC = () => {
   };
 
   const handleTypeFilterChange = (type: string) => {
-    setTypeFilters(prev => ({
-      ...prev,
-      [type]: !prev[type]
-    }));
+    setTypeFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [type]: !prev[type]
+      };
+      
+      // Prevent deselecting all filters - keep at least one selected
+      const hasAnySelected = Object.values(newFilters).some(value => value);
+      if (!hasAnySelected) {
+        return prev; // Don't allow the change if it would deselect all
+      }
+      
+      return newFilters;
+    });
   };
 
   const selectAllFilters = () => {
@@ -578,10 +597,20 @@ const Assets: React.FC = () => {
   };
 
   const deselectAllFilters = () => {
-    const allDisabled = Object.fromEntries(
-      Object.keys(typeFilters).map(key => [key, false])
+    // Instead of deselecting all, keep the first available type selected
+    const availableFilterKeys = Object.keys(typeFilters).filter(key => 
+      availableTypes.includes(key)
     );
-    setTypeFilters(allDisabled);
+    
+    if (availableFilterKeys.length === 0) return; // No filters to modify
+    
+    const newFilters = Object.fromEntries(
+      Object.keys(typeFilters).map(key => [
+        key, 
+        key === availableFilterKeys[0] // Keep the first available type selected
+      ])
+    );
+    setTypeFilters(newFilters);
   };
 
   const openUploadModal = () => {
@@ -986,118 +1015,263 @@ const Assets: React.FC = () => {
           ))}
         </ProjectSelect>
       </ProjectSelectorContainer>
-      <PageHeader>
-        <div>
-          <PageTitle>Asset Library</PageTitle>
-          <PageDescription>
-            Browse and manage assets from your Webflow site
-          </PageDescription>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <SearchContainer>
-            <SearchIcon>🔍</SearchIcon>
-            <SearchInput
-              type="text"
-              placeholder="Search assets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <ClearButton onClick={() => setSearchTerm('')}>×</ClearButton>
-            )}
-          </SearchContainer>
-          <RefreshButton 
-            onClick={() => selectedSite && fetchAssets(selectedSite)} 
-            disabled={projectsLoading || !selectedSite}
-          >
-            {projectsLoading ? <LoadingSpinner size="small" /> : <RefreshIcon>↻</RefreshIcon>}
-            Refresh
-          </RefreshButton>
-        </div>
-      </PageHeader>
+
+      {/* Enhanced Header Section */}
+      <ModernPageHeader>
+        <HeaderContent>
+          <HeaderTitleSection>
+            <PageTitleIcon>🎨</PageTitleIcon>
+            <div>
+              <ModernPageTitle>Asset Library</ModernPageTitle>
+              <ModernPageDescription>
+                Manage and organize your Webflow assets with powerful tools
+              </ModernPageDescription>
+            </div>
+          </HeaderTitleSection>
+          <HeaderActions>
+            <SearchContainer>
+              <SearchIcon>🔍</SearchIcon>
+              <SearchInput
+                type="text"
+                placeholder="Search assets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <ClearButton onClick={() => setSearchTerm('')}>×</ClearButton>
+              )}
+            </SearchContainer>
+            <ModernRefreshButton 
+              onClick={() => selectedSite && fetchAssets(selectedSite)} 
+              disabled={projectsLoading || !selectedSite}
+            >
+              {projectsLoading ? <LoadingSpinner size="small" /> : <RefreshIcon>↻</RefreshIcon>}
+              Refresh
+            </ModernRefreshButton>
+          </HeaderActions>
+        </HeaderContent>
+      </ModernPageHeader>
 
       {projectsLoading ? (
-        <LoadingMessage>Loading assets...</LoadingMessage>
+        <LoadingSection>
+          <LoadingSpinner size="large" />
+          <LoadingMessage>Loading your assets...</LoadingMessage>
+        </LoadingSection>
       ) : error ? (
-        <ErrorMessage>{error}</ErrorMessage>
+        <ErrorSection>
+          <ErrorIcon>⚠️</ErrorIcon>
+          <ErrorMessage>{error}</ErrorMessage>
+        </ErrorSection>
       ) : !selectedSite ? (
-        <InfoMessage>Please select a site to view its assets</InfoMessage>
+        <EmptySection>
+          <EmptyIcon>🏗️</EmptyIcon>
+          <EmptyTitle>No Site Selected</EmptyTitle>
+          <EmptyDescription>Please select a site to view its assets</EmptyDescription>
+        </EmptySection>
       ) : assets.length === 0 ? (
-        <NoDataMessage>No assets found in this site.</NoDataMessage>
+        <EmptySection>
+          <EmptyIcon>📁</EmptyIcon>
+          <EmptyTitle>No Assets Found</EmptyTitle>
+          <EmptyDescription>
+            This site doesn't have any assets yet. Upload your first asset to get started!
+          </EmptyDescription>
+          <EmptyAction>
+            <ModernButton primary onClick={openUploadModal}>
+              <ButtonIcon>+</ButtonIcon> Upload First Asset
+            </ModernButton>
+          </EmptyAction>
+        </EmptySection>
       ) : filteredAssets.length === 0 ? (
         Object.values(typeFilters).every(value => !value) ? (
-          <NoDataMessage>Please select at least one file type filter to view assets.</NoDataMessage>
+          <EmptySection>
+            <EmptyIcon>🔍</EmptyIcon>
+            <EmptyTitle>No Filters Selected</EmptyTitle>
+            <EmptyDescription>Please select at least one file type filter to view assets</EmptyDescription>
+          </EmptySection>
         ) : searchTerm ? (
-          <NoDataMessage>No assets found matching "{searchTerm}".</NoDataMessage>
+          <EmptySection>
+            <EmptyIcon>🔍</EmptyIcon>
+            <EmptyTitle>No Results Found</EmptyTitle>
+            <EmptyDescription>No assets found matching "{searchTerm}"</EmptyDescription>
+            <EmptyAction>
+              <ModernButton onClick={() => setSearchTerm('')}>
+                Clear Search
+              </ModernButton>
+            </EmptyAction>
+          </EmptySection>
         ) : (
-          <NoDataMessage>No assets match the current filters.</NoDataMessage>
+          <EmptySection>
+            <EmptyIcon>🔍</EmptyIcon>
+            <EmptyTitle>No Matches</EmptyTitle>
+            <EmptyDescription>No assets match the current filters</EmptyDescription>
+          </EmptySection>
         )
       ) : (
         <>
-          <ActionBar>
-            <Button primary onClick={openUploadModal}>
-              <ButtonIcon>+</ButtonIcon> Upload New Asset
-            </Button>
-            <Button onClick={downloadCSV}>
-              <ButtonIcon>⬇️</ButtonIcon> Download CSV
-            </Button>
-          </ActionBar>
+          {/* Stats Overview */}
+          <StatsSection>
+            <StatCard>
+              <StatIcon $color="var(--primary-color)">📊</StatIcon>
+              <StatValue>{assets.length}</StatValue>
+              <StatLabel>Total Assets</StatLabel>
+            </StatCard>
+            <StatCard>
+              <StatIcon $color="#10b981">🖼️</StatIcon>
+              <StatValue>{assets.filter(a => a.isImage).length}</StatValue>
+              <StatLabel>Images</StatLabel>
+            </StatCard>
+            <StatCard>
+              <StatIcon $color="#f59e0b">📄</StatIcon>
+              <StatValue>{assets.filter(a => !a.isImage).length}</StatValue>
+              <StatLabel>Documents</StatLabel>
+            </StatCard>
+            <StatCard>
+              <StatIcon $color="#6366f1">💾</StatIcon>
+              <StatValue>{formatFileSize(assets.reduce((sum, a) => sum + a.fileSize, 0))}</StatValue>
+              <StatLabel>Total Size</StatLabel>
+            </StatCard>
+          </StatsSection>
+
+          {/* Action Bar */}
+          <ModernActionBar>
+            <ActionGroup>
+              <ModernButton primary onClick={openUploadModal}>
+                <ButtonIcon>+</ButtonIcon> Upload Asset
+              </ModernButton>
+              <ModernButton onClick={downloadCSV}>
+                <ButtonIcon>⬇️</ButtonIcon> Export CSV
+              </ModernButton>
+            </ActionGroup>
+            
+            <GridSizeControls>
+              <GridSizeLabel>View:</GridSizeLabel>
+              <GridSizeOptions>
+                <GridSizeButton $active={gridSize === 'small'} onClick={() => setGridSize('small')} title="Small thumbnails">
+                  <span>⊞</span>
+                </GridSizeButton>
+                <GridSizeButton $active={gridSize === 'medium'} onClick={() => setGridSize('medium')} title="Medium thumbnails">
+                  <span>⊡</span>
+                </GridSizeButton>
+                <GridSizeButton $active={gridSize === 'large'} onClick={() => setGridSize('large')} title="Large thumbnails">
+                  <span>⬜</span>
+                </GridSizeButton>
+              </GridSizeOptions>
+            </GridSizeControls>
+            
+            <AssetCountBadge>
+              {filteredAssets.length === assets.length
+                ? `${assets.length} assets`
+                : `${filteredAssets.length} of ${assets.length} assets`}
+            </AssetCountBadge>
+          </ModernActionBar>
           
-          <FilterContainer>
-            <FilterHeader>
-              <FilterLabel>Filter by type:</FilterLabel>
+          {/* Compact Filter Section */}
+          <CompactFilterContainer>
+            <FilterRow>
+              <FilterGroup>
+                <FilterGroupTitle>Type:</FilterGroupTitle>
+                <CompactFilterOptions>
+                  {['image', 'svg', 'document', 'video', 'audio', 'other'].map(type => 
+                    availableTypes.includes(type) && (
+                      <CompactFilterChip key={type} $active={typeFilters[type]} onClick={() => handleTypeFilterChange(type)}>
+                        <span>
+                          {type === 'image' && '🖼️'}
+                          {type === 'svg' && '📊'}
+                          {type === 'document' && '📄'}
+                          {type === 'video' && '🎬'}
+                          {type === 'audio' && '🎵'}
+                          {type === 'other' && '📦'}
+                        </span>
+                        {type === 'image' && 'Images'}
+                        {type === 'svg' && 'SVG'}
+                        {type === 'document' && 'Docs'}
+                        {type === 'video' && 'Video'}
+                        {type === 'audio' && 'Audio'}
+                        {type === 'other' && 'Other'}
+                        <CompactFilterCount>
+                          {assets.filter(asset => {
+                            const mimeType = asset.mimeType.toLowerCase();
+                            if (type === 'svg') return mimeType.startsWith('image/svg');
+                            if (type === 'image') return mimeType.startsWith('image/') && !mimeType.includes('svg');
+                            if (type === 'document') return mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text/');
+                            if (type === 'video') return mimeType.startsWith('video/');
+                            if (type === 'audio') return mimeType.startsWith('audio/');
+                            return true; // 'other'
+                          }).length}
+                        </CompactFilterCount>
+                      </CompactFilterChip>
+                  ))}
+                </CompactFilterOptions>
+              </FilterGroup>
+              
+              <FilterGroup>
+                <FilterGroupTitle>Alt Text:</FilterGroupTitle>
+                <CompactFilterOptions>
+                  <CompactFilterChip $active={altTextFilter === 'all'} onClick={() => setAltTextFilter('all')}>
+                    <span>📝</span>
+                    All
+                    <CompactFilterCount>{assets.length}</CompactFilterCount>
+                  </CompactFilterChip>
+                  <CompactFilterChip $active={altTextFilter === 'with-alt'} onClick={() => setAltTextFilter('with-alt')}>
+                    <span>✅</span>
+                    With Alt
+                    <CompactFilterCount>{assets.filter(asset => asset.altText && asset.altText.trim().length > 0).length}</CompactFilterCount>
+                  </CompactFilterChip>
+                  <CompactFilterChip $active={altTextFilter === 'without-alt'} onClick={() => setAltTextFilter('without-alt')}>
+                    <span>❌</span>
+                    Missing Alt
+                    <CompactFilterCount>{assets.filter(asset => !asset.altText || asset.altText.trim().length === 0).length}</CompactFilterCount>
+                  </CompactFilterChip>
+                </CompactFilterOptions>
+              </FilterGroup>
+              
               <FilterActions>
-                <FilterButton onClick={selectAllFilters}>Select All</FilterButton>
-                <FilterButton onClick={deselectAllFilters}>Deselect All</FilterButton>
+                <FilterActionButton onClick={selectAllFilters}>Select All</FilterActionButton>
+                <FilterActionButton onClick={deselectAllFilters}>Reset Filters</FilterActionButton>
               </FilterActions>
-            </FilterHeader>
-            <FilterOptionsContainer>
-              {['image', 'svg', 'document', 'video', 'audio', 'other'].map(type => 
-                availableTypes.includes(type) && (
-                <FilterOption key={type}>
-                  <FilterCheckbox 
-                    type="checkbox" 
-                    id={`filter-${type}`}
-                    checked={typeFilters[type]}
-                    onChange={() => handleTypeFilterChange(type)}
-                  />
-                  <FilterCheckboxLabel htmlFor={`filter-${type}`}>
-                    {type === 'image' && '🖼️ Images'}
-                    {type === 'svg' && '📊 SVG'}
-                    {type === 'document' && '📄 Documents'}
-                    {type === 'video' && '🎬 Videos'}
-                    {type === 'audio' && '🎵 Audio'}
-                    {type === 'other' && '📦 Other'}
-                  </FilterCheckboxLabel>
-                </FilterOption>
-              ))}
-            </FilterOptionsContainer>
-          </FilterContainer>
+            </FilterRow>
+          </CompactFilterContainer>
           
-          <AssetCount>
-            {filteredAssets.length === assets.length
-              ? `${assets.length} assets found`
-              : `${filteredAssets.length} of ${assets.length} assets found`}
-          </AssetCount>
-          
-          <AssetsGrid>
+          {/* Enhanced Assets Grid */}
+          <ModernAssetsGrid $gridSize={gridSize}>
             {filteredAssets.map(asset => (
-              <AssetCard key={asset.id} onClick={() => openAssetModal(asset)}>
+              <ModernAssetCard key={asset.id} onClick={() => openAssetModal(asset)}>
+                <AssetCardHeader>
+                                     <AssetTypeIndicator $isImage={!!asset.isImage}>
+                     {getAssetTypeIcon(asset.mimeType)}
+                   </AssetTypeIndicator>
+                  {asset.isImage && asset.dimensions && (
+                    <AssetDimensions>
+                      {asset.dimensions.width}×{asset.dimensions.height}
+                    </AssetDimensions>
+                  )}
+                </AssetCardHeader>
+
                 {asset.isImage ? (
-                  <AssetThumbnail>
+                  <ModernAssetThumbnail>
                     <img src={asset.thumbnailUrl || asset.url} alt={asset.altText || asset.name} />
-                  </AssetThumbnail>
+                    <ThumbnailOverlay>
+                      <PreviewIcon>👁️</PreviewIcon>
+                    </ThumbnailOverlay>
+                  </ModernAssetThumbnail>
                 ) : (
-                  <AssetIconContainer>
-                    <TypeIcon>{getAssetTypeIcon(asset.mimeType)}</TypeIcon>
-                  </AssetIconContainer>
+                  <ModernAssetIconContainer>
+                    <ModernTypeIcon>{getAssetTypeIcon(asset.mimeType)}</ModernTypeIcon>
+                    <FileExtension>
+                      {asset.fileName.split('.').pop()?.toUpperCase()}
+                    </FileExtension>
+                  </ModernAssetIconContainer>
                 )}
-                <AssetInfo>
-                  <AssetName title={asset.name}>{asset.name}</AssetName>
-                  <AssetFileName title={asset.fileName}>{asset.fileName}</AssetFileName>
-                  <AssetAltTextContainer>
+
+                <ModernAssetInfo>
+                  <AssetMainInfo>
+                    <ModernAssetName title={asset.name}>{asset.name}</ModernAssetName>
+                    <ModernAssetFileName title={asset.fileName}>{asset.fileName}</ModernAssetFileName>
+                  </AssetMainInfo>
+
+                  <AssetAltTextSection>
                     {inlineEditingAssetId === asset.id ? (
-                      <>
+                      <InlineEditContainer>
                         <InlineAltTextInput
                           type="text"
                           value={inlineAltTextInput}
@@ -1106,40 +1280,51 @@ const Assets: React.FC = () => {
                           maxLength={255}
                           autoFocus
                           onClick={e => e.stopPropagation()}
+                          placeholder="Enter alt text..."
                         />
-                        <InlineActionButton 
-                          primary 
-                          onClick={e => handleInlineSaveAltText(asset, e)} 
-                          disabled={inlineAltTextLoading || inlineAltTextInput.trim() === (asset.altText || '').trim()}
-                        >
-                          {inlineAltTextLoading ? 'Saving...' : 'Save'}
-                        </InlineActionButton>
-                        <InlineActionButton onClick={handleInlineCancelEditAlt} disabled={inlineAltTextLoading}>
-                          Cancel
-                        </InlineActionButton>
+                        <InlineButtonGroup>
+                          <InlineActionButton 
+                            primary 
+                            onClick={e => handleInlineSaveAltText(asset, e)} 
+                            disabled={inlineAltTextLoading || inlineAltTextInput.trim() === (asset.altText || '').trim()}
+                          >
+                            {inlineAltTextLoading ? '💾' : '✓'}
+                          </InlineActionButton>
+                          <InlineActionButton onClick={handleInlineCancelEditAlt} disabled={inlineAltTextLoading}>
+                            ✕
+                          </InlineActionButton>
+                        </InlineButtonGroup>
                         {inlineAltTextError && <InlineAltTextError>{inlineAltTextError}</InlineAltTextError>}
-                      </>
+                      </InlineEditContainer>
                     ) : (
-                      <>
-                        <AssetAltText title={getDisplayAltText(asset.altText) || "No alt text"}>
-                          Alt: {getDisplayAltText(asset.altText) || <EmptyAltText>Not set</EmptyAltText>}
-                        </AssetAltText>
+                      <AltTextDisplay>
+                        <AltTextLabel>Alt:</AltTextLabel>
+                        <ModernAssetAltText title={getDisplayAltText(asset.altText) || "No alt text"}>
+                          {getDisplayAltText(asset.altText) || <EmptyAltText>Not set</EmptyAltText>}
+                        </ModernAssetAltText>
                         {asset.isImage && (
-                          <EditAltButton onClick={e => handleInlineEditAlt(asset, e)}>
-                            Edit
-                          </EditAltButton>
+                          <ModernEditAltButton onClick={e => handleInlineEditAlt(asset, e)}>
+                            ✏️
+                          </ModernEditAltButton>
                         )}
-                      </>
+                      </AltTextDisplay>
                     )}
-                  </AssetAltTextContainer>
-                  <AssetMeta>
-                    <span>{formatFileSize(asset.fileSize)}</span>
-                    <span>{formatDate(asset.lastUpdated)}</span>
-                  </AssetMeta>
-                </AssetInfo>
-              </AssetCard>
+                  </AssetAltTextSection>
+
+                  <ModernAssetMeta>
+                    <MetaItem>
+                      <MetaIcon>💾</MetaIcon>
+                      <MetaText>{formatFileSize(asset.fileSize)}</MetaText>
+                    </MetaItem>
+                    <MetaItem>
+                      <MetaIcon>📅</MetaIcon>
+                      <MetaText>{formatDate(asset.lastUpdated)}</MetaText>
+                    </MetaItem>
+                  </ModernAssetMeta>
+                </ModernAssetInfo>
+              </ModernAssetCard>
             ))}
-          </AssetsGrid>
+          </ModernAssetsGrid>
         </>
       )}
       
@@ -1603,6 +1788,25 @@ const FilterLabel = styled.div`
 const FilterActions = styled.div`
   display: flex;
   gap: 0.5rem;
+  margin-left: auto;
+`;
+
+const FilterActionButton = styled.button`
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: var(--hover-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
 `;
 
 const FilterButton = styled.button`
@@ -1617,8 +1821,8 @@ const FilterButton = styled.button`
   
   &:hover {
     background-color: var(--hover-color);
-    color: var(--primary-color);
     border-color: var(--primary-color);
+    color: var(--primary-color);
   }
 `;
 
@@ -1978,4 +2182,611 @@ const EditButtonHoverStyle = createGlobalStyle`
   }
 `;
 
-export default Assets; 
+// Modern styled components for Assets UI
+const ModernPageHeader = styled.div`
+  background: linear-gradient(135deg, var(--background-light) 0%, var(--background-secondary) 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+`;
+
+const HeaderContent = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+`;
+
+const HeaderTitleSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const PageTitleIcon = styled.div`
+  font-size: 3rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+`;
+
+const ModernPageTitle = styled.h1`
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+  line-height: 1.2;
+`;
+
+const ModernPageDescription = styled.p`
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+  opacity: 0.9;
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const ModernRefreshButton = styled.button<{ disabled?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  ${props => props.disabled && `
+    opacity: 0.5;
+    cursor: not-allowed;
+    &:hover {
+      background: var(--primary-color);
+      transform: none;
+      box-shadow: none;
+    }
+  `}
+`;
+
+const StatsSection = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+`;
+
+const StatCard = styled.div`
+  background: var(--background-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+`;
+
+const StatIcon = styled.div<{ $color: string }>`
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: ${props => props.$color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+`;
+
+const StatValue = styled.div`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+`;
+
+const ModernActionBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem 1.5rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+`;
+
+const ActionGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const ModernButton = styled.button<{ primary?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  ${props => props.primary ? `
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    
+    &:hover {
+      background: var(--hover-color);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+  ` : `
+    background: var(--background-main);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    
+    &:hover {
+      background: var(--hover-color);
+      border-color: var(--primary-color);
+    }
+  `}
+`;
+
+const AssetCountBadge = styled.div`
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+`;
+
+const GridSizeControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const GridSizeLabel = styled.span`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+`;
+
+const GridSizeOptions = styled.div`
+  display: flex;
+  gap: 0.25rem;
+  background: var(--background-main);
+  border-radius: 6px;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+`;
+
+const GridSizeButton = styled.button<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  background: ${props => props.$active ? 'var(--primary-color)' : 'transparent'};
+  color: ${props => props.$active ? 'white' : 'var(--text-secondary)'};
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.$active ? 'var(--hover-color)' : 'var(--background-secondary)'};
+  }
+  
+  span {
+    font-size: 1rem;
+  }
+`;
+
+// Compact Filter Components
+const CompactFilterContainer = styled.div`
+  background: var(--background-light);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+`;
+
+const FilterGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const FilterGroupTitle = styled.span`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: fit-content;
+`;
+
+const CompactFilterOptions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const CompactFilterChip = styled.button<{ $active: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid ${props => props.$active ? 'var(--primary-color)' : 'var(--border-color)'};
+  background: ${props => props.$active ? 'var(--primary-color)' : 'var(--background-main)'};
+  color: ${props => props.$active ? 'white' : 'var(--text-primary)'};
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: var(--primary-color);
+    background: ${props => props.$active ? 'var(--hover-color)' : 'var(--primary-color-light, #e6f3ff)'};
+    transform: translateY(-1px);
+  }
+  
+  span {
+    font-size: 0.875rem;
+  }
+`;
+
+const CompactFilterCount = styled.span`
+  background: var(--background-secondary);
+  color: inherit;
+  padding: 0.125rem 0.375rem;
+  border-radius: 10px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+`;
+
+const ModernAssetsGrid = styled.div<{ $gridSize: 'small' | 'medium' | 'large' }>`
+  display: grid;
+  grid-template-columns: ${props => {
+    switch (props.$gridSize) {
+      case 'small':
+        return 'repeat(auto-fill, minmax(200px, 1fr))';
+      case 'medium':
+        return 'repeat(auto-fill, minmax(280px, 1fr))';
+      case 'large':
+        return 'repeat(auto-fill, minmax(360px, 1fr))';
+      default:
+        return 'repeat(auto-fill, minmax(280px, 1fr))';
+    }
+  }};
+  gap: ${props => {
+    switch (props.$gridSize) {
+      case 'small':
+        return '1rem';
+      case 'medium':
+        return '1.5rem';
+      case 'large':
+        return '2rem';
+      default:
+        return '1.5rem';
+    }
+  }};
+  margin-bottom: 2rem;
+`;
+
+const ModernAssetCard = styled.div`
+  background: var(--background-light);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+  }
+`;
+
+const AssetCardHeader = styled.div`
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 2;
+`;
+
+const AssetTypeIndicator = styled.div<{ $isImage: boolean }>`
+  background: ${props => props.$isImage ? 'rgba(0, 0, 0, 0.6)' : 'var(--primary-color)'};
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+`;
+
+const AssetDimensions = styled.div`
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+`;
+
+const ModernAssetThumbnail = styled.div`
+  height: 180px;
+  background: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ThumbnailOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  
+  ${ModernAssetCard}:hover & {
+    opacity: 1;
+  }
+`;
+
+const PreviewIcon = styled.div`
+  color: white;
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+`;
+
+const ModernAssetIconContainer = styled.div`
+  height: 180px;
+  background: var(--secondary-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+`;
+
+const ModernTypeIcon = styled.div`
+  font-size: 4rem;
+  color: var(--text-secondary);
+`;
+
+const FileExtension = styled.div`
+  background: var(--primary-color);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+`;
+
+const ModernAssetInfo = styled.div`
+  padding: 1.25rem;
+`;
+
+const AssetMainInfo = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const ModernAssetName = styled.h3`
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const ModernAssetFileName = styled.div`
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-family: 'SF Mono', monospace;
+  background: var(--background-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+`;
+
+const AssetAltTextSection = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const InlineEditContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+`;
+
+const InlineButtonGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const AltTextDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 24px;
+`;
+
+const ModernAssetAltText = styled.div`
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const ModernEditAltButton = styled.button`
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.25rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: all 0.2s;
+  
+  ${ModernAssetCard}:hover & {
+    opacity: 1;
+  }
+  
+  &:hover {
+    background: var(--hover-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+`;
+
+const ModernAssetMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const MetaIcon = styled.span`
+  font-size: 0.75rem;
+`;
+
+const MetaText = styled.span`
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+`;
+
+const LoadingSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+`;
+
+const ErrorSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 3rem;
+`;
+
+const EmptySection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+  text-align: center;
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+`;
+
+const EmptyDescription = styled.p`
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0 0 2rem 0;
+  max-width: 400px;
+`;
+
+const EmptyAction = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+export default Assets;

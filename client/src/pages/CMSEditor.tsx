@@ -246,50 +246,227 @@ const ActionButton = styled.button`
 
 // Create a component for editable fields list
 const FieldsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background-color: var(--background-main);
-  padding: 0.75rem;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
-  margin-top: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
   max-height: 300px;
   overflow-y: auto;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--background-main);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+    
+    &:hover {
+      background: var(--text-tertiary);
+    }
+  }
 `;
 
 // Create a component for editable field item
 const FieldItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  background: var(--background-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
 `;
 
 // Create a component for editable field name
 const FieldName = styled.span`
   font-weight: 600;
   color: var(--text-primary);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 // Create a component for editable field type
 const FieldType = styled.span`
-  margin-left: 1rem;
-  color: var(--text-secondary);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
 `;
 
 // Create a component for editable field slug
 const FieldSlug = styled.span`
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: var(--background-light);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
 `;
 
 // Create a component for editable required badge
 const RequiredBadge = styled.span`
-  background-color: rgba(229, 62, 62, 0.1);
-  padding: 0.1rem 0.3rem;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
   font-size: 0.7rem;
-  color: var(--error-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+`;
+
+// Enhanced collection details components
+const CollectionOverview = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, var(--primary-color), #667eea);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: white;
+`;
+
+const CollectionMeta = styled.div`
+  flex: 1;
+`;
+
+const CollectionTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  color: white;
+`;
+
+const CollectionStats = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  font-size: 0.85rem;
+  font-weight: 500;
+`;
+
+const StatIcon = styled.span`
+  font-size: 1.1rem;
+`;
+
+const CollectionIdContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--background-main);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+`;
+
+const CollectionIdText = styled.code`
+  flex: 1;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  word-break: break-all;
+`;
+
+const CopyButton = styled.button`
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+  }
+`;
+
+const SlugContainer = styled.div`
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: var(--background-main);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  color: var(--primary-color);
+  font-weight: 600;
+`;
+
+const ItemCountDisplay = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+`;
+
+const CountNumber = styled.span`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+`;
+
+const CountLabel = styled.span`
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+
+
+const FieldIcon = styled.span`
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+`;
+
+const FieldsSection = styled.div`
+  margin-top: 1rem;
+`;
+
+const FieldsSectionTitle = styled.h4`
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.75rem 0;
 `;
 
 // Create a component for editable edit modal content
@@ -915,20 +1092,41 @@ const EmptyStateMessage = styled.p`
 // Create a component for editable details grid
 const DetailsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.25rem;
 `;
 
 // Create a component for editable detail item
 const DetailItem = styled.div<{ span?: number }>`
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all 0.2s ease;
   ${props => props.span && `grid-column: span ${props.span};`}
   
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+  }
+  
   strong {
+    display: block;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+  }
+  
+  & > *:not(strong) {
     color: var(--text-primary);
+    font-size: 0.85rem;
     font-weight: 600;
-    margin-right: 0.5rem;
+    line-height: 1.4;
   }
 `;
 
@@ -1284,6 +1482,32 @@ function prettifySlug(slug: string): string {
   return slug
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Utility to get field icon based on type
+function getFieldIcon(fieldType: string): string {
+  const iconMap: { [key: string]: string } = {
+    'PlainText': '📝',
+    'RichText': '📄',
+    'Image': '🖼️',
+    'Number': '🔢',
+    'Link': '🔗',
+    'Email': '📧',
+    'Phone': '📞',
+    'Date': '📅',
+    'DateTime': '🕒',
+    'Switch': '🔘',
+    'Color': '🎨',
+    'Option': '📋',
+    'File': '📎',
+    'Video': '🎥',
+    'User': '👤',
+    'ItemRef': '🔄',
+    'MultiRef': '🔗',
+    'Bool': '✅'
+  };
+  
+  return iconMap[fieldType] || '📋';
 }
 
 // Utility to format cell values
@@ -2679,46 +2903,85 @@ const CMSEditor = (): ReactElement => {
                   <EmptyStateMessage>No details available for this collection.</EmptyStateMessage>
                 </EmptyStateContainer>
               ) : (
-                <DetailsGrid>
-                  <DetailItem>
-                    <strong>ID:</strong> {modal.collectionDetails.id}
-                  </DetailItem>
-                  <DetailItem>
-                    <strong>Name:</strong> {modal.collectionDetails.name}
-                  </DetailItem>
-                  <DetailItem>
-                    <strong>Slug:</strong> {modal.collectionDetails.slug}
-                  </DetailItem>
-                  <DetailItem>
-                    <strong>Item Count:</strong> {modal.collectionDetails.itemCount}
-                  </DetailItem>
-                  <DetailItem>
-                    <strong>Created:</strong> {formatDate(modal.collectionDetails.createdOn)}
-                  </DetailItem>
-                  <DetailItem>
-                    <strong>Last Updated:</strong> {formatDate(modal.collectionDetails.lastUpdated)}
-                  </DetailItem>
-                  <DetailItem span={2}>
-                    <strong>Site:</strong> {modal.collectionDetails.siteName}
-                  </DetailItem>
-                  {modal.collectionDetails.fields && (
-                    <DetailItem span={2}>
-                      <strong>Fields:</strong>
+                <>
+                  <CollectionOverview>
+                    <CollectionMeta>
+                      <CollectionTitle>{modal.collectionDetails.displayName || modal.collectionDetails.name || 'Unnamed Collection'}</CollectionTitle>
+                      <CollectionStats>
+                        <StatItem>
+                          <StatIcon>📄</StatIcon>
+                          <span>{modal.collectionDetails.itemCount} items</span>
+                        </StatItem>
+                        <StatItem>
+                          <StatIcon>🏷️</StatIcon>
+                          <span>{modal.collectionDetails.slug}</span>
+                        </StatItem>
+                      </CollectionStats>
+                    </CollectionMeta>
+                  </CollectionOverview>
+                  
+                  <DetailsGrid>
+                    <DetailItem>
+                      <strong>Collection ID</strong>
+                      <CollectionIdContainer>
+                        <CollectionIdText>{modal.collectionDetails.id}</CollectionIdText>
+                        <CopyButton 
+                          onClick={() => navigator.clipboard.writeText(modal.collectionDetails.id)}
+                          title="Copy ID"
+                        >
+                          📋
+                        </CopyButton>
+                      </CollectionIdContainer>
+                    </DetailItem>
+                    <DetailItem>
+                      <strong>Display Name</strong>
+                      {modal.collectionDetails.displayName || modal.collectionDetails.name || 'Unnamed Collection'}
+                    </DetailItem>
+                    <DetailItem>
+                      <strong>URL Slug</strong>
+                      <SlugContainer>
+                        <span>/{modal.collectionDetails.slug}</span>
+                      </SlugContainer>
+                    </DetailItem>
+                    <DetailItem>
+                      <strong>Total Items</strong>
+                      <ItemCountDisplay>
+                        <CountNumber>{modal.collectionDetails.itemCount}</CountNumber>
+                        <CountLabel>items</CountLabel>
+                      </ItemCountDisplay>
+                    </DetailItem>
+                    <DetailItem>
+                      <strong>Created On</strong>
+                      {formatDate(modal.collectionDetails.createdOn)}
+                    </DetailItem>
+                    <DetailItem>
+                      <strong>Last Modified</strong>
+                      {formatDate(modal.collectionDetails.lastUpdated)}
+                    </DetailItem>
+
+                  </DetailsGrid>
+                  
+                  {modal.collectionDetails.fields && modal.collectionDetails.fields.length > 0 && (
+                    <FieldsSection>
+                      <FieldsSectionTitle>Collection Schema ({modal.collectionDetails.fields.length} fields)</FieldsSectionTitle>
                       <FieldsList>
                         {modal.collectionDetails.fields.map((field: any) => (
                           <FieldItem key={field.id}>
                             <div>
-                              <FieldName>{field.name}</FieldName>
+                              <FieldName>
+                                <FieldIcon>{getFieldIcon(field.type)}</FieldIcon>
+                                {field.displayName || field.name}
+                                {field.isRequired && <RequiredBadge>Required</RequiredBadge>}
+                              </FieldName>
                               <FieldType>{field.type}</FieldType>
-                              {field.required && <RequiredBadge>Required</RequiredBadge>}
                             </div>
                             <FieldSlug>{field.slug}</FieldSlug>
                           </FieldItem>
                         ))}
                       </FieldsList>
-                    </DetailItem>
+                    </FieldsSection>
                   )}
-                </DetailsGrid>
+                </>
               )}
             </ModalBody>
             <ModalFooter>

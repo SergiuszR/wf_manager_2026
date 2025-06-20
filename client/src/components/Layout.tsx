@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
 import { format, addMinutes, addHours, addDays } from 'date-fns';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -53,7 +52,6 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const navigate = useNavigate();
   const { user: rawUser, logout, token } = useAuth();
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
   const [publishState, setPublishState] = useState<PublishState>({
     isOpen: false,
     isScheduling: false,
@@ -329,118 +327,121 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       : '';
 
     return (
-      <Modal onClick={closePublishModal}>
-        <ModalContent onClick={(e) => e.stopPropagation()}>
-          <ModalHeader>
-            <h2>Publish Site</h2>
-            <WFCloseButton onClick={closePublishModal}>×</WFCloseButton>
-          </ModalHeader>
+      <ModernModal onClick={closePublishModal}>
+        <ModernModalContent onClick={(e) => e.stopPropagation()}>
+          <ModernModalHeader>
+            <ModernModalTitle>
+              <ModernModalIcon>🚀</ModernModalIcon>
+              <div>
+                <ModernModalTitleText>Publish Site</ModernModalTitleText>
+                <ModernModalSubtitle>Deploy your changes to the live site</ModernModalSubtitle>
+              </div>
+            </ModernModalTitle>
+            <ModernCloseButton onClick={closePublishModal}>
+              <span>×</span>
+            </ModernCloseButton>
+          </ModernModalHeader>
           
           {publishState.isSuccess ? (
-            <SuccessMessage>
-              <span role="img" aria-label="Success">✅</span>
-              {publishState.isScheduling 
-                ? `Publication scheduled for ${formatScheduledTime(publishState.scheduledTime)}`
-                : 'Site published successfully!'}
-            </SuccessMessage>
+            <ModernSuccessMessage>
+              <div className="success-icon">✅</div>
+              <div className="success-text">
+                {publishState.isScheduling 
+                  ? `Publication scheduled for ${formatScheduledTime(publishState.scheduledTime)}`
+                  : 'Site published successfully!'}
+              </div>
+            </ModernSuccessMessage>
           ) : (
             <>
-              <ModalBody>
+              <ModernModalBody>
                 {publishState.error && (
-                  <ErrorMessage>
-                    <strong>Error:</strong> {publishState.error}
-                    {publishState.error.includes('Too many requests') && (
-                      <p>Webflow API has rate limits. Please wait a moment and try again.</p>
-                    )}
-                  </ErrorMessage>
+                  <ModernErrorMessage>
+                    <div className="error-icon">⚠️</div>
+                    <div>
+                      <strong>Error:</strong> {publishState.error}
+                      {publishState.error.includes('Too many requests') && (
+                        <p>Webflow API has rate limits. Please wait a moment and try again.</p>
+                      )}
+                    </div>
+                  </ModernErrorMessage>
                 )}
                 
-                <ScheduleToggle>
-                  <Label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <ToggleSwitch>
+                <ModernScheduleToggle>
+                  <ModernToggleLabel>
+                    <ModernToggleSwitch>
                       <input
                         type="checkbox"
                         checked={publishState.isScheduling}
                         onChange={toggleScheduling}
                       />
-                      <Slider />
-                    </ToggleSwitch>
-                    <span>Schedule for later</span>
-                  </Label>
-                </ScheduleToggle>
+                      <ModernSlider />
+                    </ModernToggleSwitch>
+                    <ModernToggleText>Schedule for later</ModernToggleText>
+                  </ModernToggleLabel>
+                </ModernScheduleToggle>
                 
                 {publishState.isScheduling && (
-                  <ScheduleContainer>
-                    <FormGroup>
-                      <Label>Publish Time:</Label>
-                      <DateTimeInput
+                  <ModernScheduleContainer>
+                    <ModernFormGroup>
+                      <ModernLabel>Publish Time</ModernLabel>
+                      <ModernDateTimeInput
                         type="datetime-local"
                         value={publishState.scheduledTime}
                         onChange={handleScheduledTimeChange}
                         min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                       />
                       {scheduledDate && (
-                        <ScheduleSummary>
+                        <ModernScheduleSummary>
                           {formatScheduledTime(publishState.scheduledTime)} ({relativeTime})
-                        </ScheduleSummary>
+                        </ModernScheduleSummary>
                       )}
-                    </FormGroup>
+                    </ModernFormGroup>
                     
-                    <QuickOptions>
-                      <Label>Quick Options:</Label>
-                      <QuickOptionsButtons>
-                        <QuickButton 
-                          onClick={() => setQuickTime(15)}
-                        >
+                    <ModernQuickOptions>
+                      <ModernLabel>Quick Options</ModernLabel>
+                      <ModernQuickOptionsButtons>
+                        <ModernQuickButton onClick={() => setQuickTime(15)}>
                           15 min
-                        </QuickButton>
-                        <QuickButton 
-                          onClick={() => setQuickTime(30)}
-                        >
+                        </ModernQuickButton>
+                        <ModernQuickButton onClick={() => setQuickTime(30)}>
                           30 min
-                        </QuickButton>
-                        <QuickButton 
-                          onClick={() => setQuickTime(60)}
-                        >
+                        </ModernQuickButton>
+                        <ModernQuickButton onClick={() => setQuickTime(60)}>
                           1 hour
-                        </QuickButton>
-                        <QuickButton 
-                          onClick={() => setQuickTime(24 * 60)}
-                        >
+                        </ModernQuickButton>
+                        <ModernQuickButton onClick={() => setQuickTime(24 * 60)}>
                           Tomorrow
-                        </QuickButton>
-                      </QuickOptionsButtons>
-                    </QuickOptions>
-                  </ScheduleContainer>
+                        </ModernQuickButton>
+                      </ModernQuickOptionsButtons>
+                    </ModernQuickOptions>
+                  </ModernScheduleContainer>
                 )}
                 
-                <PublishNote>
+                <ModernPublishNote>
                   {publishState.isScheduling 
-                    ? 'This will schedule the publication of your site at the specified time.' 
-                    : 'This will publish your site immediately.'}
-                </PublishNote>
-              </ModalBody>
+                    ? 'Your site will be published automatically at the specified time.' 
+                    : 'Your site will be published immediately and go live.'}
+                </ModernPublishNote>
+              </ModernModalBody>
               
-              <ModalFooter>
-                <Button onClick={closePublishModal}>
+              <ModernModalFooter>
+                <ModernButton variant="secondary" onClick={closePublishModal}>
                   Cancel
-                </Button>
-                <Button className="primary" 
-                  onClick={handlePublish}
-                >
+                </ModernButton>
+                <ModernButton variant="primary" onClick={handlePublish} disabled={publishState.isPublishing}>
                   {publishState.isPublishing ? (
-                    <Spinner />
+                    <ModernSpinner />
                   ) : publishState.isScheduling ? (
                     'Schedule Publish'
                   ) : (
                     'Publish Now'
                   )}
-                </Button>
-              </ModalFooter>
+                </ModernButton>
+              </ModernModalFooter>
             </>
           )}
-        </ModalContent>
-      </Modal>
+        </ModernModalContent>
+      </ModernModal>
     );
   };
 
@@ -588,9 +589,17 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [newProjectError, setNewProjectError] = useState('');
   useEffect(() => {
-    if (!selectedProject) setShowProjectPicker(true);
-    else setShowProjectPicker(false);
-  }, [selectedProject]);
+    // Only show project picker modal if there are multiple projects and no project is selected
+    if (!selectedProject && projects.length > 1) {
+      setShowProjectPicker(true);
+    } else if (!selectedProject && projects.length === 1) {
+      // Auto-select the only project available
+      setSelectedProject(projects[0]);
+      setShowProjectPicker(false);
+    } else {
+      setShowProjectPicker(false);
+    }
+  }, [selectedProject, projects, setSelectedProject]);
 
   useEffect(() => {
     if (selectedProject) setTempSelected(selectedProject.id);
@@ -812,48 +821,89 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
       {NewProjectMiniModal}
       <Sidebar>
         <SidebarHeader>
-          <Logo>Webflow Manager</Logo>
+          <LogoContainer>
+            <LogoIcon>⚡</LogoIcon>
+            <Logo>Webflow Manager</Logo>
+          </LogoContainer>
         </SidebarHeader>
         <Nav>
           <NavItem $active={isActive('/dashboard')}>
-            <StyledLink to="/dashboard">Dashboard</StyledLink>
+            <StyledLink to="/dashboard">
+              <NavIcon>📊</NavIcon>
+              <NavText>Dashboard</NavText>
+            </StyledLink>
           </NavItem>
           <NavItem $active={isActive('/pages')}>
             {selectedProject ? (
-              <StyledLink to="/pages">Pages</StyledLink>
+              <StyledLink to="/pages">
+                <NavIcon>📄</NavIcon>
+                <NavText>Pages</NavText>
+              </StyledLink>
             ) : (
-              <DisabledNavItem title="Select a project to continue.">Pages</DisabledNavItem>
+              <DisabledNavItem title="Select a project to continue.">
+                <NavIcon>📄</NavIcon>
+                <NavText>Pages</NavText>
+              </DisabledNavItem>
             )}
           </NavItem>
           <NavItem $active={isActive('/cms-editor')}>
             {selectedProject ? (
-              <StyledLink to="/cms-editor">CMS Editor</StyledLink>
+              <StyledLink to="/cms-editor">
+                <NavIcon>📝</NavIcon>
+                <NavText>CMS Editor</NavText>
+              </StyledLink>
             ) : (
-              <DisabledNavItem title="Select a project to continue.">CMS Editor</DisabledNavItem>
+              <DisabledNavItem title="Select a project to continue.">
+                <NavIcon>📝</NavIcon>
+                <NavText>CMS Editor</NavText>
+              </DisabledNavItem>
             )}
           </NavItem>
           <NavItem $active={isActive('/assets')}>
             {user?.user_metadata?.premium ? (
               selectedProject ? (
-                <StyledLink to="/assets">Assets</StyledLink>
+                <StyledLink to="/assets">
+                  <NavIcon>🖼️</NavIcon>
+                  <NavText>Assets</NavText>
+                </StyledLink>
               ) : (
-                <DisabledNavItem title="Select a project to continue.">Assets</DisabledNavItem>
+                <DisabledNavItem title="Select a project to continue.">
+                  <NavIcon>🖼️</NavIcon>
+                  <NavText>Assets</NavText>
+                  <PremiumBadge>Premium</PremiumBadge>
+                </DisabledNavItem>
               )
             ) : (
-              <DisabledNavItem>Assets <PremiumBadge>Premium</PremiumBadge></DisabledNavItem>
+              <DisabledNavItem>
+                <NavIcon>🖼️</NavIcon>
+                <NavText>Assets</NavText>
+                <PremiumBadge>Premium</PremiumBadge>
+              </DisabledNavItem>
             )}
           </NavItem>
           <NavItem $active={isActive('/activity')}>
             {user?.user_metadata?.premium ? (
               selectedProject ? (
-                <StyledLink to="/activity">Activity Logs</StyledLink>
+                <StyledLink to="/activity">
+                  <NavIcon>📈</NavIcon>
+                  <NavText>Activity Logs</NavText>
+                </StyledLink>
               ) : (
-                <DisabledNavItem title="Select a project to continue.">Activity Logs</DisabledNavItem>
+                <DisabledNavItem title="Select a project to continue.">
+                  <NavIcon>📈</NavIcon>
+                  <NavText>Activity Logs</NavText>
+                  <PremiumBadge>Premium</PremiumBadge>
+                </DisabledNavItem>
               )
             ) : (
-              <DisabledNavItem>Activity Logs <PremiumBadge>Premium</PremiumBadge></DisabledNavItem>
+              <DisabledNavItem>
+                <NavIcon>📈</NavIcon>
+                <NavText>Activity Logs</NavText>
+                <PremiumBadge>Premium</PremiumBadge>
+              </DisabledNavItem>
             )}
           </NavItem>
+          
           <ActionButton
             onClick={selectedProject ? openPublishModal : undefined}
             title={!selectedProject ? 'Select a project to continue.' : undefined}
@@ -888,21 +938,10 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         </Nav>
         <UserSection>
           {user && (
-            <>
-              <UserInfo>
-                <TokenName>Active Webflow Token</TokenName>
-                <TokenLabel>{user.tokenName}</TokenLabel>
-              </UserInfo>
-              <ButtonGroup>
-                <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
-                <ThemeButton 
-                  onClick={toggleTheme} 
-                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-                >
-                  {theme === 'light' ? '🌙' : '☀️'}
-                </ThemeButton>
-              </ButtonGroup>
-            </>
+            <LogoutButton onClick={handleLogout}>
+              <LogoutIcon>👋</LogoutIcon>
+              <LogoutText>Logout</LogoutText>
+            </LogoutButton>
           )}
         </UserSection>
         
@@ -929,26 +968,46 @@ const AppContainer = styled.div`
 `;
 
 const Sidebar = styled.div`
-  width: 250px;
-  background-color: var(--background-light);
+  width: 280px;
+  background: linear-gradient(180deg, var(--background-light) 0%, rgba(99, 102, 241, 0.02) 100%);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   height: 100vh;
   position: fixed;
-  box-shadow: var(--box-shadow);
+  backdrop-filter: blur(10px);
+  border-radius: 0 12px 12px 0;
+  overflow: hidden;
 `;
 
 const SidebarHeader = styled.div`
-  padding: 1.5rem;
+  padding: 2rem 1.5rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
+  background: var(--background-light);
+`;
+
+const LogoContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const LogoIcon = styled.div`
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-color), #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const Logo = styled.h1`
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 700;
   margin: 0;
-  color: var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
 const Nav = styled.nav`
@@ -957,29 +1016,35 @@ const Nav = styled.nav`
 `;
 
 const NavItem = styled.div<NavItemProps>`
-  padding: 0.75rem 1.5rem;
-  position: relative;
+  margin: 0.25rem 1rem;
+  border-radius: 12px;
+  transition: all 0.2s ease;
   
   ${props => props.$active && `
-    background-color: var(--hover-color);
-    border-left: 4px solid var(--primary-color);
-    padding-left: calc(1.5rem - 4px);
+    background: linear-gradient(135deg, var(--primary-color), rgba(99, 102, 241, 0.8));
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     
-    a {
-      color: var(--primary-color);
-      font-weight: 600;
+    a, span {
+      color: white !important;
     }
   `}
   
-  &:hover {
-    background-color: var(--hover-color);
+  &:hover:not(:has(span[title])) {
+    background: var(--hover-color);
+    transform: translateX(4px);
   }
 `;
 
 const StyledLink = styled(Link)`
   color: var(--text-secondary);
   text-decoration: none;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
   
   &:hover {
     text-decoration: none;
@@ -987,73 +1052,61 @@ const StyledLink = styled(Link)`
   }
 `;
 
-const UserSection = styled.div`
-  padding: 1.5rem;
-  border-top: 1px solid var(--border-color);
-`;
-
-const UserInfo = styled.div`
-  margin-bottom: 1rem;
-`;
-
-const TokenName = styled.div`
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--primary-color);
-  margin-bottom: 0.25rem;
-`;
-
-const TokenLabel = styled.div`
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const LogoutButton = styled.button`
-  flex: 1;
-  padding: 0.5rem;
-  background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 0.875rem;
-  
-  &:hover {
-    background-color: var(--hover-color);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-  }
-`;
-
-const ThemeButton = styled.button`
-  padding: 0.5rem;
-  background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 0.875rem;
+const NavIcon = styled.span`
+  font-size: 1.2rem;
+  width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+const NavText = styled.span`
+  font-size: 0.95rem;
+  font-weight: 500;
+`;
+
+const UserSection = styled.div`
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--background-light);
+`;
+
+const LogoutButton = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
   
   &:hover {
-    background-color: var(--hover-color);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(231, 76, 60, 0.05));
+    color: var(--error-color);
+    border-color: var(--error-color);
+    transform: translateY(-1px);
   }
+`;
+
+const LogoutIcon = styled.span`
+  font-size: 1.1rem;
+`;
+
+const LogoutText = styled.span`
+  font-weight: 500;
 `;
 
 const MainContent = styled.main`
   flex: 1;
   padding: 2rem;
-  margin-left: 250px;
-  width: calc(100% - 250px);
+  margin-left: 280px;
+  width: calc(100% - 280px);
 `;
 
 // New styled components for publish feature
@@ -1496,22 +1549,393 @@ const EmptyScheduleMessage = styled.div`
 
 // Add styled components for the badge and disabled nav item
 const PremiumBadge = styled.span`
-  background: gold;
+  background: linear-gradient(135deg, gold, #f39c12);
   color: #fff;
   font-size: 0.7em;
   font-weight: bold;
   border-radius: 8px;
-  padding: 0.1em 0.6em;
-  margin-left: 0.5em;
+  padding: 0.2em 0.6em;
+  margin-left: auto;
   vertical-align: middle;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const DisabledNavItem = styled.span`
   color: var(--text-tertiary);
   opacity: 0.6;
   cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  font-weight: 500;
+`;
+
+// Modern Modal Components
+const ModernModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const ModernModalContent = styled.div`
+  background: var(--background-light);
+  border-radius: 20px;
+  min-width: 500px;
+  max-width: 600px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @keyframes slideIn {
+    from { 
+      opacity: 0; 
+      transform: translateY(20px) scale(0.95); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0) scale(1); 
+    }
+  }
+`;
+
+const ModernModalHeader = styled.div`
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--background-light), var(--background-main));
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const ModernModalTitle = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+`;
+
+const ModernModalIcon = styled.div`
+  font-size: 2rem;
+  background: linear-gradient(135deg, var(--primary-color), #6366f1);
+  padding: 0.75rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+`;
+
+const ModernModalTitleText = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  color: var(--text-primary);
+  line-height: 1.2;
+`;
+
+const ModernModalSubtitle = styled.p`
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+`;
+
+const ModernCloseButton = styled.button`
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--error-color);
+    color: white;
+    border-color: var(--error-color);
+    transform: scale(1.05);
+  }
+  
+  span {
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+`;
+
+const ModernModalBody = styled.div`
+  padding: 2rem;
+`;
+
+const ModernModalFooter = styled.div`
+  padding: 1.5rem 2rem;
+  background: var(--background-main);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+`;
+
+const ModernSuccessMessage = styled.div`
+  padding: 2rem;
+  text-align: center;
+  
+  .success-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .success-text {
+    font-size: 1.1rem;
+    color: var(--success-color);
+    font-weight: 600;
+  }
+`;
+
+const ModernErrorMessage = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  
+  .error-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  
+  strong {
+    color: var(--error-color);
+  }
+`;
+
+const ModernScheduleToggle = styled.div`
+  margin: 1.5rem 0;
+`;
+
+const ModernToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+`;
+
+const ModernToggleSwitch = styled.div`
+  position: relative;
   display: inline-block;
-  padding: 0.5em 0;
+  width: 50px;
+  height: 28px;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+`;
+
+const ModernSlider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 28px;
+  transition: 0.3s;
+  
+  &:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  input:checked + & {
+    background-color: var(--primary-color);
+  }
+  
+  input:checked + &:before {
+    transform: translateX(22px);
+  }
+`;
+
+const ModernToggleText = styled.span`
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+`;
+
+const ModernScheduleContainer = styled.div`
+  background: var(--background-main);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+`;
+
+const ModernFormGroup = styled.div`
+  margin-bottom: 1.5rem;
+`;
+
+const ModernLabel = styled.label`
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+`;
+
+const ModernDateTimeInput = styled.input`
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--background-light);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+`;
+
+const ModernScheduleSummary = styled.div`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary-color);
+`;
+
+const ModernQuickOptions = styled.div`
+  margin-top: 1rem;
+`;
+
+const ModernQuickOptionsButtons = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+`;
+
+const ModernQuickButton = styled.button`
+  padding: 0.5rem 1rem;
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+  }
+`;
+
+const ModernPublishNote = styled.div`
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-color);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+`;
+
+const ModernButton = styled.button<{ variant: 'primary' | 'secondary'; disabled?: boolean }>`
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  ${props => props.variant === 'primary' ? `
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    
+    &:hover:not(:disabled) {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+  ` : `
+    background: var(--background-light);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    
+    &:hover:not(:disabled) {
+      background: var(--background-main);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+  `}
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const ModernSpinner = styled.div`
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 // Add styled ToastContainer

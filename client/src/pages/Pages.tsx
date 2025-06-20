@@ -114,6 +114,7 @@ const Pages: React.FC = () => {
   }>({ type: null, pageId: null });
   const [cmsItemsByCollection, setCmsItemsByCollection] = useState<Record<string, CmsItemPage[]>>({});
   const [loadingCmsItems, setLoadingCmsItems] = useState<Record<string, boolean>>({});
+  const [expandedCollections, setExpandedCollections] = useState<Record<string, boolean>>({});
 
   // Only fetch pages for the selected project
   useEffect(() => {
@@ -348,58 +349,12 @@ const Pages: React.FC = () => {
     }
   };
 
-  // Helper to render a CMS item row
-  const renderCmsItemRow = (item: CmsItemPage) => {
-    return (
-      <StyledTableRow key={item.id} $isCmsPage={true} className="cms-item-row">
-        <TableCell className="cms-item-cell">
-          <CmsItemArrow>↳</CmsItemArrow> {item.name}
-          {item.isDraft && <DraftBadge>Draft</DraftBadge>}
-          <LinkIcon title="View published CMS item">🌐</LinkIcon>
-        </TableCell>
-        <TableCell>{item.slug}</TableCell>
-        <TableCell>-</TableCell>
-        <TableCell>
-          <PageTypeTag isCmsPage={true}>CMS Item</PageTypeTag>
-        </TableCell>
-        <TableCell>
-          <ActionButtons>
-            <ActionButton 
-              onClick={e => {
-                e.stopPropagation();
-                window.open(item.url, '_blank');
-              }}
-              title="View published CMS item"
-            >
-              <span role="img" aria-label="View">👁️</span>
-            </ActionButton>
-          </ActionButtons>
-        </TableCell>
-      </StyledTableRow>
-    );
-  };
+  // This function is no longer used with the new card layout
+  // const renderCmsItemRow = (item: CmsItemPage) => { ... };
 
-  // Modified renderTableRow to include CMS items as children
-  const renderTableRowWithCmsItems = (page: WebflowPage) => {
-    const row = renderTableRow(page);
-    if (isCollectionPage(page) && page.collectionId) {
-      const items = cmsItemsByCollection[page.collectionId];
-      const loading = loadingCmsItems[page.collectionId];
-      return [
-        row,
-        loading ? (
-          <StyledTableRow key={page.id + '-loading'} $isCmsPage={true}>
-            <TableCell colSpan={5} style={{ paddingLeft: 40, color: '#888' }}>
-              <LoadingSpinner size="small" /> Loading CMS items...
-            </TableCell>
-          </StyledTableRow>
-        ) : items && items.length > 0 ? (
-          items.map(renderCmsItemRow)
-        ) : null
-      ];
-    }
-    return row;
-  };
+  // These functions are no longer used with the new card layout
+  // const renderTableRowWithCmsItems = (page: WebflowPage) => { ... };
+  // const renderTableRow = (page: WebflowPage) => { ... };
 
   // For export: flatten the tree to include CMS items
   const getExportRows = () => {
@@ -816,75 +771,420 @@ const Pages: React.FC = () => {
     );
   };
 
-  // Update the action cell in renderTableRow to prevent click propagation
-  const renderTableRow = (page: WebflowPage) => {
-    const { url, isPublished } = getPageUrl(page);
-    const hasLink = !!url;
-    const isMenuOpen = dropdown.isOpen && dropdown.pageId === page.id;
+  // Old table render function removed - using new card layout instead
+
+  // StyledTableRow component removed - using new card layout instead
+
+  // Add a styled span for the arrow
+  const CmsItemArrow = styled.span`
+    color: var(--text-tertiary);
+    margin-right: 0.25rem;
+  `;
+
+  // Add a styled DraftBadge
+  const DraftBadge = styled.span`
+    background-color: #f0ad4e;
+    color: white;
+    font-size: 0.7em;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 8px;
+    vertical-align: middle;
+  `;
+
+  // Sleek, modern, unified Project Selector
+  const ProjectSelectorContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 2rem 0;
+    padding: 0;
+    position: relative;
+  `;
+
+  const ProjectAccentBar = styled.span`
+    display: inline-block;
+    width: 4px;
+    height: 2.2rem;
+    border-radius: 2px;
+    background: var(--primary-color);
+    margin-right: 0.85rem;
+  `;
+
+  const ProjectLabel = styled.label`
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    letter-spacing: 0.01em;
+  `;
+
+  const ProjectSelect = styled.select`
+    padding: 0.45rem 1.1rem 0.45rem 0.7rem;
+    border-radius: 6px;
+    border: 1.2px solid var(--border-color);
+    background: var(--background-main);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    transition: border-color 0.18s;
+    box-shadow: none;
+    min-width: 160px;
+    &:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 1.5px var(--primary-color-light, #b3d4fc);
+    }
+    &:disabled {
+      background: var(--background-secondary);
+      color: var(--text-tertiary);
+      opacity: 0.7;
+    }
+  `;
+
+  // Keep these legacy components for the old table functions that still exist
+  const TableCell = styled.td`
+    padding: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    &:first-child {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    &.cms-item-cell {
+      padding-left: 40px;
+    }
+  `;
+
+  const LinkIcon = styled.span`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color, #3e98e5);
+    opacity: 0.7;
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+  `;
+
+  interface PageTypeTagProps {
+    isCmsPage: boolean;
+  }
+
+  const PageTypeTagStyled = styled.span<PageTypeTagProps>`
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-wrap: nowrap;
+    text-align: center;
     
-    return (
-      <StyledTableRow 
-        key={page.id} 
-        $isCmsPage={isCollectionPage(page)}
-        className={hasLink ? "clickable-row" : ""}
-        onClick={hasLink ? () => window.open(url, '_blank') : undefined}
-        style={hasLink ? { cursor: 'pointer' } : {}}
-      >
-        <TableCell>
-          <span>{page.title}</span>
-          {hasLink && (
-            <LinkIcon title={isPublished ? "View published page" : "Open in Webflow Editor"}>
-              {isPublished ? "🌐" : "⟳"}
-            </LinkIcon>
-          )}
-        </TableCell>
-        <TableCell>{page.slug}</TableCell>
-        <TableCell>{formatDate(page.lastUpdated)}</TableCell>
-        <TableCell>
-          <PageTypeTag isCmsPage={isCollectionPage(page)}>
-            {isCollectionPage(page) ? 'CMS' : 'Static'}
-          </PageTypeTag>
-        </TableCell>
-        <TableCell onClick={(e) => e.stopPropagation()}>
-          <div style={{ position: 'relative' }}>
-            <ActionButtons>
-              {page.url && (
-                <ActionButton 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(page.url, '_blank');
-                  }}
-                  title="View published page"
-                >
-                  <span role="img" aria-label="View">👁️</span>
-                </ActionButton>
-              )}
-              
-              {page.previewUrl && (
-                <ActionButton 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(page.previewUrl, '_blank');
-                  }}
-                  title="Open in Webflow Editor"
-                >
-                  <span role="img" aria-label="Edit">✏️</span>
-                </ActionButton>
-              )}
-              
-              <ActionButton 
-                onClick={(e) => handleMenuClick(e, page.id)}
-                title="More options"
-                className="menu-trigger"
-              >
-                <span>⋮</span>
-              </ActionButton>
-            </ActionButtons>
-            {activeDropdown === page.id && renderDropdown(page.id)}
-          </div>
-        </TableCell>
-      </StyledTableRow>
+    ${props => props.isCmsPage ? `
+      background-color: rgba(62, 152, 229, 0.2);
+      color: #2370b8;
+    ` : `
+      background-color: rgba(72, 187, 120, 0.2);
+      color: #2f855a;
+    `}
+  `;
+
+  // Ensure this component filters out custom props
+  const PageTypeTag: React.FC<React.PropsWithChildren<PageTypeTagProps>> = 
+    ({ isCmsPage, children }) => (
+      <PageTypeTagStyled isCmsPage={isCmsPage}>
+        {children}
+      </PageTypeTagStyled>
     );
+
+  const ExportButton = styled.button`
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    
+    &:hover {
+      background-color: var(--primary-hover);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  `;
+
+  // Loading and message components
+  const LoadingMessage = styled.div`
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+  `;
+
+  const NoDataMessage = styled.div`
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+  `;
+
+  const ErrorMessage = styled.div`
+    color: var(--error-color);
+    background-color: rgba(229, 62, 62, 0.1);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  `;
+
+  // Modal components  
+  const ModalOverlay = styled.div`
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  `;
+
+  const ModalContent = styled.div`
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 20px var(--shadow-color, rgba(0, 0, 0, 0.15));
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.2s ease-out;
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+
+  const ModalHeader = styled.div`
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `;
+
+  const ModalTitle = styled.h3`
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  `;
+
+  const CloseButton = styled.button`
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    
+    &:hover {
+      color: var(--text-primary);
+    }
+  `;
+
+  const ModalBody = styled.div`
+    padding: 1.25rem;
+    overflow-y: auto;
+  `;
+
+  const ModalFooter = styled.div`
+    padding: 1.25rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  `;
+
+  const Button = styled.button<{ primary?: boolean }>`
+    padding: 0.5rem 1rem;
+    background-color: ${props => props.primary ? 'var(--primary-color)' : 'transparent'};
+    color: ${props => props.primary ? 'white' : 'var(--text-secondary)'};
+    border: ${props => props.primary ? 'none' : '1px solid var(--border-color)'};
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover {
+      background-color: ${props => props.primary ? 'var(--primary-hover)' : 'var(--hover-color)'};
+      color: ${props => props.primary ? 'white' : 'var(--primary-color)'};
+      border-color: ${props => props.primary ? 'none' : 'var(--primary-color)'};
+    }
+  `;
+
+  // Dropdown components
+  const DropdownContainer = styled.div`
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 5px;
+    background-color: var(--background-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 10px var(--shadow-color, rgba(0, 0, 0, 0.1));
+    z-index: 1000;
+    min-width: 180px;
+    overflow: hidden;
+
+    .dropdown-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+      
+      &:hover {
+        background-color: var(--hover-color);
+      }
+    }
+  `;
+
+  // Detail modal components
+  const DetailsGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  `;
+
+  const DetailItem = styled.div<{ span?: number }>`
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    ${props => props.span && `
+      grid-column: span ${props.span};
+    `}
+  `;
+
+  const DetailLabel = styled.span`
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  `;
+
+  const DetailValue = styled.span`
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    word-break: break-word;
+    overflow-wrap: break-word;
+  `;
+
+  const DetailLink = styled.a`
+    color: var(--primary-color);
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+    
+    span {
+      font-size: 0.75rem;
+      margin-left: 0.25rem;
+    }
+  `;
+
+  // Publish modal components
+  const ScheduleToggle = styled.div`
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+
+    label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    input {
+      margin-right: 8px;
+    }
+  `;
+
+  const ScheduleContainer = styled.div`
+    margin: 15px 0;
+    padding: 15px;
+    background-color: var(--gray-surface);
+    border-radius: 8px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background-color: var(--bg-color-card);
+      color: rgb(var(--body-text));
+    }
+  `;
+
+  const QuickTimeOptions = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  `;
+
+  const QuickTimeButton = styled.button`
+    padding: 6px 12px;
+    background-color: var(--accent-3);
+    color: rgb(var(--body-text));
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--accent-5);
+    }
+  `;
+
+  const SuccessMessage = styled.div`
+    padding: 15px;
+    background-color: #e6f7e6;
+    color: #2e7d32;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+  `;
+
+  // Helper function to toggle CMS collection expansion
+  const toggleCollectionExpansion = (collectionId: string) => {
+    setExpandedCollections(prev => ({
+      ...prev,
+      [collectionId]: !prev[collectionId]
+    }));
   };
 
   // Render the page details modal
@@ -1145,134 +1445,6 @@ const Pages: React.FC = () => {
     );
   };
 
-  // DomViewer component is already defined at the bottom, add LoadingSpinner right after it
-  const DomViewer = styled.pre`
-    background-color: #282c34;
-    color: #abb2bf;
-    padding: 20px;
-    border-radius: 4px;
-    font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    tab-size: 2;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-    
-    span {
-      display: inline;
-    }
-  `;
-
-  // Add the loading spinner component here with the other styled components
-  const LoadingSpinner = styled.div<{ size?: 'small' | 'medium' | 'large' }>`
-    display: inline-block;
-    width: ${props => props.size === 'small' ? '16px' : props.size === 'large' ? '32px' : '24px'};
-    height: ${props => props.size === 'small' ? '16px' : props.size === 'large' ? '32px' : '24px'};
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    border-top-color: var(--primary-color, #3e98e5);
-    animation: spin 0.8s linear infinite;
-    margin-right: ${props => props.size === 'small' ? '6px' : '8px'};
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  `;
-
-  // Move StyledTableRow definition after TableRow
-  const TableRow = styled.tr<TableRowProps>`
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--border-color);
-    }
-    ${props => props.$isCmsPage && `
-      background-color: var(--background-light);
-    `}
-    &.cms-item-row {
-      background-color: var(--background-light);
-    }
-  `;
-
-  const StyledTableRow: React.FC<React.PropsWithChildren<TableRowProps & React.HTMLAttributes<HTMLTableRowElement>>> = 
-    ({ $isCmsPage, children, ...rest }) => {
-      // Filter out custom props before passing to DOM element
-      const domProps = { ...rest };
-      return (
-        <TableRow $isCmsPage={$isCmsPage} {...domProps}>
-          {children}
-        </TableRow>
-      );
-    };
-
-  // Add a styled span for the arrow
-  const CmsItemArrow = styled.span`
-    color: var(--text-tertiary);
-    margin-right: 0.25rem;
-  `;
-
-  // Add a styled DraftBadge
-  const DraftBadge = styled.span`
-    background-color: #f0ad4e;
-    color: white;
-    font-size: 0.7em;
-    font-weight: 600;
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin-left: 8px;
-    vertical-align: middle;
-  `;
-
-  // Sleek, modern, unified Project Selector
-  const ProjectSelectorContainer = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0 0 2rem 0;
-    padding: 0;
-    position: relative;
-  `;
-
-  const ProjectAccentBar = styled.span`
-    display: inline-block;
-    width: 4px;
-    height: 2.2rem;
-    border-radius: 2px;
-    background: var(--primary-color);
-    margin-right: 0.85rem;
-  `;
-
-  const ProjectLabel = styled.label`
-    font-weight: 500;
-    font-size: 1rem;
-    color: var(--primary-color);
-    margin-right: 0.5rem;
-    letter-spacing: 0.01em;
-  `;
-
-  const ProjectSelect = styled.select`
-    padding: 0.45rem 1.1rem 0.45rem 0.7rem;
-    border-radius: 6px;
-    border: 1.2px solid var(--border-color);
-    background: var(--background-main);
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 500;
-    transition: border-color 0.18s;
-    box-shadow: none;
-    min-width: 160px;
-    &:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 1.5px var(--primary-color-light, #b3d4fc);
-    }
-    &:disabled {
-      background: var(--background-secondary);
-      color: var(--text-tertiary);
-      opacity: 0.7;
-    }
-  `;
-
   return (
     <PageContainer>
       {/* Always show the project selector at the top */}
@@ -1344,27 +1516,140 @@ const Pages: React.FC = () => {
               </NoDataMessage>
             ) : (
               <>
-                <PageCount>{filteredPages.length} of {pages.length} pages</PageCount>
-                <PagesTable>
-                  <thead>
-                    <TableRow>
-                      <TableHeader onClick={() => handleSort('title')}>
-                        Name {sortConfig.key === 'title' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                      </TableHeader>
-                      <TableHeader onClick={() => handleSort('slug')}>
-                        Slug {sortConfig.key === 'slug' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                      </TableHeader>
-                      <TableHeader onClick={() => handleSort('lastUpdated')}>
-                        Last Updated {sortConfig.key === 'lastUpdated' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                      </TableHeader>
-                      <TableHeader>Type</TableHeader>
-                      <TableHeader>Actions</TableHeader>
-                    </TableRow>
-                  </thead>
-                  <tbody>
-                    {filteredPages.flatMap(renderTableRowWithCmsItems)}
-                  </tbody>
-                </PagesTable>
+                <StatsContainer>
+                  <StatsCard>
+                    <StatsNumber>{filteredPages.length}</StatsNumber>
+                    <StatsLabel>Total Pages</StatsLabel>
+                  </StatsCard>
+                  <StatsCard>
+                    <StatsNumber>{filteredPages.filter(p => isCollectionPage(p)).length}</StatsNumber>
+                    <StatsLabel>CMS Templates</StatsLabel>
+                  </StatsCard>
+                  <StatsCard>
+                    <StatsNumber>{filteredPages.filter(p => !isCollectionPage(p)).length}</StatsNumber>
+                    <StatsLabel>Static Pages</StatsLabel>
+                  </StatsCard>
+                  <StatsCard>
+                    <StatsNumber>{Object.values(cmsItemsByCollection).reduce((sum, items) => sum + items.length, 0)}</StatsNumber>
+                    <StatsLabel>CMS Items</StatsLabel>
+                  </StatsCard>
+                </StatsContainer>
+
+                <PagesList>
+                  {filteredPages.map(page => (
+                    <React.Fragment key={page.id}>
+                      <PageListItem 
+                        $isCmsPage={isCollectionPage(page)}
+                        onClick={() => {
+                          const { url } = getPageUrl(page);
+                          if (url) window.open(url, '_blank');
+                        }}
+                      >
+                        <PageMainContent>
+                          <PageTitleSection>
+                            <PageTypeIcon $isCmsPage={isCollectionPage(page)}>
+                              {isCollectionPage(page) ? '📄' : '📝'}
+                            </PageTypeIcon>
+                            <PageItemTitle>{page.title}</PageItemTitle>
+                            <PageTypeTag isCmsPage={isCollectionPage(page)}>
+                              {isCollectionPage(page) ? 'CMS' : 'Static'}
+                            </PageTypeTag>
+                          </PageTitleSection>
+                          
+                          <PageMetaSection>
+                            <PageSlug>/{page.slug}</PageSlug>
+                            <PageMeta>
+                              <MetaItem>
+                                <MetaIcon>🕒</MetaIcon>
+                                {formatDate(page.lastUpdated)}
+                              </MetaItem>
+                              <MetaItem>
+                                <MetaIcon>🌐</MetaIcon>
+                                {page.siteName}
+                              </MetaItem>
+                            </PageMeta>
+                          </PageMetaSection>
+                        </PageMainContent>
+
+                        <PageActions>
+                          <PageStatus $hasUrl={!!getPageUrl(page).url}>
+                            <StatusIcon>
+                              {getPageUrl(page).url ? (getPageUrl(page).isPublished ? '🌐' : '⟳') : '❌'}
+                            </StatusIcon>
+                            <StatusText>
+                              {getPageUrl(page).url ? (getPageUrl(page).isPublished ? 'Published' : 'Editor') : 'No URL'}
+                            </StatusText>
+                          </PageStatus>
+                          
+                          <ActionsMenu>
+                            <MenuTrigger
+                              className="menu-trigger"
+                              onClick={(e) => handleMenuClick(e, page.id)}
+                              $isActive={activeDropdown === page.id}
+                            >
+                              ⋯
+                            </MenuTrigger>
+                            {activeDropdown === page.id && renderDropdown(page.id)}
+                            
+                            {loadingAction.pageId === page.id && (
+                              <LoadingIndicator>
+                                <LoadingSpinner size="small" />
+                              </LoadingIndicator>
+                            )}
+                          </ActionsMenu>
+                        </PageActions>
+                      </PageListItem>
+
+                      {/* CMS Items - show as compact sub-list */}
+                      {isCollectionPage(page) && page.collectionId && cmsItemsByCollection[page.collectionId] && cmsItemsByCollection[page.collectionId].length > 0 && (
+                        <CmsItemsSection>
+                          <CmsItemsHeader>
+                            <CmsItemsTitle>
+                              ↳ {cmsItemsByCollection[page.collectionId].length} Collection Items
+                            </CmsItemsTitle>
+                            <CmsItemsToggle onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCollectionExpansion(page.collectionId!);
+                            }}>
+                              {expandedCollections[page.collectionId!] ? 'Collapse' : 'View All'}
+                            </CmsItemsToggle>
+                          </CmsItemsHeader>
+                                                     <CmsItemsPreview>
+                             {(expandedCollections[page.collectionId!] 
+                               ? cmsItemsByCollection[page.collectionId]
+                               : cmsItemsByCollection[page.collectionId].slice(0, 3)
+                                                          ).map(item => (
+                               <CmsItemRow key={item.id} onClick={(e) => {
+                                 e.stopPropagation();
+                                 window.open(item.url, '_blank');
+                               }}>
+                                  <CmsItemContent>
+                                     <CmsItemName>
+                                       {item.name}
+                                       {item.isDraft && <DraftBadge>Draft</DraftBadge>}
+                                     </CmsItemName>
+                                     <CmsItemSlug>/{item.slug}</CmsItemSlug>
+                                  </CmsItemContent>
+                                  <CmsItemMeta>
+                                    {item.isDraft && <span style={{ fontSize: '0.75rem', color: 'orange' }}>✏️</span>}
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>⟳</span>
+                                  </CmsItemMeta>
+                               </CmsItemRow>
+                             ))}
+                             {!expandedCollections[page.collectionId!] && cmsItemsByCollection[page.collectionId].length > 3 && (
+                               <CmsMoreItems onClick={(e) => {
+                                 e.stopPropagation();
+                                 toggleCollectionExpansion(page.collectionId!);
+                               }}>
+                                 +{cmsItemsByCollection[page.collectionId].length - 3} more items
+                               </CmsMoreItems>
+                             )}
+                           </CmsItemsPreview>
+                        </CmsItemsSection>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </PagesList>
               </>
             )}
           </>
@@ -1437,155 +1722,127 @@ const FilterCheckbox = styled.div`
   }
 `;
 
-const PagesTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  overflow: hidden;
+const PagesList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 `;
 
-interface TableRowProps {
-  $isCmsPage?: boolean;
-}
-
-const TableHeader = styled.th`
-  text-align: left;
-  padding: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  background-color: var(--secondary-color);
+const PageListItem = styled.div<{ $isCmsPage: boolean }>`
+  background-color: var(--background-light);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color 0.2s;
-  
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  gap: 1rem;
+
   &:hover {
-    background-color: var(--secondary-hover);
+    background-color: var(--hover-color);
+    border-color: var(--primary-color);
+    transform: translateX(2px);
   }
-`;
 
-const TableCell = styled.td`
-  padding: 1rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  &:first-child {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-  &.cms-item-cell {
-    padding-left: 40px;
-  }
-`;
-
-const LoadingMessage = styled.div`
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-secondary);
-  background-color: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-`;
-
-const NoDataMessage = styled.div`
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-secondary);
-  background-color: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-`;
-
-const ErrorMessage = styled.div`
-  color: var(--error-color);
-  background-color: rgba(229, 62, 62, 0.1);
-  border-radius: var(--border-radius);
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-`;
-
-const PageCount = styled.div`
-  margin-bottom: 1rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-`;
-
-interface PageTypeTagProps {
-  isCmsPage: boolean;
-}
-
-const PageTypeTagStyled = styled.span<PageTypeTagProps>`
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-wrap: nowrap;
-  text-align: center;
-  
-  ${props => props.isCmsPage ? `
-    background-color: rgba(62, 152, 229, 0.2);
-    color: #2370b8;
-  ` : `
-    background-color: rgba(72, 187, 120, 0.2);
-    color: #2f855a;
+  ${props => props.$isCmsPage && `
+    border-left: 3px solid var(--primary-color);
+    padding-left: 1.125rem;
   `}
 `;
 
-// Ensure this component filters out custom props
-const PageTypeTag: React.FC<React.PropsWithChildren<PageTypeTagProps>> = 
-  ({ isCmsPage, children }) => (
-    <PageTypeTagStyled isCmsPage={isCmsPage}>
-      {children}
-    </PageTypeTagStyled>
-  );
-
-const LinkIcon = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary-color, #3e98e5);
-  opacity: 0.7;
-  font-size: 0.75rem;
-  margin-left: 0.25rem;
+const PageMainContent = styled.div`
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
 `;
 
-const ExportButton = styled.button`
-  padding: 0.5rem 1rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
+const PageTitleSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+`;
+
+const PageTypeIcon = styled.span<{ $isCmsPage: boolean }>`
   font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: var(--primary-color);
+`;
+
+const PageItemTitle = styled.div`
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const PageMetaSection = styled.div`
   display: flex;
   align-items: center;
-  
-  &:hover {
-    background-color: var(--primary-hover);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 `;
 
-// New styled components for dropdown and modal
-const ActionCell = styled.div`
-  position: relative;
+const PageSlug = styled.span`
+  font-family: monospace;
+  background-color: var(--background-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+`;
+
+const PageMeta = styled.div`
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
 `;
 
-const ActionButton = styled.button`
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const MetaIcon = styled.span`
+  font-size: 0.75rem;
+  opacity: 0.7;
+`;
+
+const PageActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const PageStatus = styled.div<{ $hasUrl: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: ${props => props.$hasUrl ? 'var(--primary-color)' : 'var(--text-tertiary)'};
+`;
+
+const StatusIcon = styled.span`
+  font-size: 0.75rem;
+`;
+
+const StatusText = styled.span`
+  font-size: 0.75rem;
+  font-weight: 500;
+`;
+
+const ActionsMenu = styled.div`
+  position: relative;
+`;
+
+const MenuTrigger = styled.button<{ $isActive: boolean }>`
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  font-size: 1.25rem;
+  padding: 0.25rem;
+  font-size: 1.1rem;
   color: var(--text-tertiary);
   border-radius: var(--border-radius);
   
@@ -1593,244 +1850,249 @@ const ActionButton = styled.button`
     background-color: var(--hover-color);
     color: var(--text-primary);
   }
-`;
 
-const DropdownContainer = styled.div`
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 5px;
-  background-color: var(--background-light);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: 0 2px 10px var(--shadow-color, rgba(0, 0, 0, 0.1));
-  z-index: 1000;
-  min-width: 180px;
-  overflow: hidden;
-
-  .dropdown-item {
-    padding: 10px 15px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  ${props => props.$isActive && `
+    background-color: var(--hover-color);
     color: var(--text-primary);
-    
-    &:hover {
-      background-color: var(--hover-color);
-    }
-  }
+  `}
 `;
 
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+const LoadingIndicator = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 100;
+  gap: 0.25rem;
 `;
 
-const ModalContent = styled.div`
-  background-color: var(--background-light);
-  border-radius: var(--border-radius);
-  box-shadow: 0 2px 20px var(--shadow-color, rgba(0, 0, 0, 0.15));
-  width: 90%;
-  max-width: 700px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  animation: fadeIn 0.2s ease-out;
+// CMS Section Components
+const CmsItemsSection = styled.div`
+  position: relative;
+  margin-left: 3rem;
+  margin-top: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, var(--background-light) 0%, var(--background-secondary) 100%);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
   
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  &::before {
+    content: '';
+    position: absolute;
+    left: -3rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-color-light, #b3d4fc));
+    border-radius: 1px;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    left: -3rem;
+    top: 50%;
+    width: 1rem;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 1px;
+    transform: translateY(-50%);
   }
 `;
 
-const ModalHeader = styled.div`
-  padding: 1.25rem;
+const CmsItemsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
+`;
+
+const CmsItemsTitle = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  font-size: 1.25rem;
+  gap: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--primary-color);
+  
+  &::before {
+    content: '📄';
+    font-size: 1rem;
+  }
 `;
 
-const CloseButton = styled.button`
-  background: transparent;
+const CmsItemsToggle = styled.button`
+  background: var(--primary-color);
+  color: white;
   border: none;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--text-tertiary);
   cursor: pointer;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s;
   
   &:hover {
-    color: var(--text-primary);
+    background: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 `;
 
-const ModalBody = styled.div`
-  padding: 1.25rem;
-  overflow-y: auto;
-`;
-
-const ModalFooter = styled.div`
-  padding: 1.25rem;
-  border-top: 1px solid var(--border-color);
+const CmsItemsPreview = styled.div`
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
 `;
 
-const Button = styled.button<{ primary?: boolean }>`
-  padding: 0.5rem 1rem;
-  background-color: ${props => props.primary ? 'var(--primary-color)' : 'transparent'};
-  color: ${props => props.primary ? 'white' : 'var(--text-secondary)'};
-  border: ${props => props.primary ? 'none' : '1px solid var(--border-color)'};
-  border-radius: var(--border-radius);
+const CmsItemRow = styled.div`
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  
+  &:hover {
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  &::before {
+    content: '→';
+    position: absolute;
+    left: -1.5rem;
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
+`;
+
+const CmsItemContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+`;
+
+const CmsItemName = styled.span`
   font-size: 0.875rem;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: 600;
+`;
+
+const CmsItemSlug = styled.span`
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-family: 'SF Mono', monospace;
+  background: var(--background-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  width: fit-content;
+`;
+
+const CmsItemMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const CmsMoreItems = styled.div`
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-style: italic;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px dashed var(--border-color);
   cursor: pointer;
   transition: all 0.2s;
   
   &:hover {
-    background-color: ${props => props.primary ? 'var(--primary-hover)' : 'var(--hover-color)'};
-    color: ${props => props.primary ? 'white' : 'var(--primary-color)'};
-    border-color: ${props => props.primary ? 'none' : 'var(--primary-color)'};
+    background: var(--hover-color);
+    border-color: var(--primary-color);
   }
 `;
 
-const DetailsGrid = styled.div`
+const StatsContainer = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
 `;
 
-const DetailItem = styled.div<{ span?: number }>`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  ${props => props.span && `
-    grid-column: span ${props.span};
-  `}
-`;
-
-const DetailLabel = styled.span`
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  font-weight: 500;
-`;
-
-const DetailValue = styled.span`
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  word-break: break-word;
-  overflow-wrap: break-word;
-`;
-
-const DetailLink = styled.a`
-  color: var(--primary-color);
-  text-decoration: none;
+const StatsCard = styled.div`
+  background-color: var(--background-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 1.25rem;
+  text-align: center;
+  transition: transform 0.2s ease;
   
   &:hover {
-    text-decoration: underline;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   }
+`;
+
+const StatsNumber = styled.div`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+`;
+
+const StatsLabel = styled.div`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+`;
+
+// Missing styled components
+const LoadingSpinner = styled.div<{ size?: 'small' | 'medium' | 'large' }>`
+  display: inline-block;
+  width: ${props => props.size === 'small' ? '16px' : props.size === 'large' ? '32px' : '24px'};
+  height: ${props => props.size === 'small' ? '16px' : props.size === 'large' ? '32px' : '24px'};
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: var(--primary-color, #3e98e5);
+  animation: spin 0.8s linear infinite;
+  margin-right: ${props => props.size === 'small' ? '6px' : '8px'};
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const DomViewer = styled.pre`
+  background-color: #282c34;
+  color: #abb2bf;
+  padding: 20px;
+  border-radius: 4px;
+  font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  tab-size: 2;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
   
   span {
-    font-size: 0.75rem;
-    margin-left: 0.25rem;
+    display: inline;
   }
-`;
-
-const ApiNote = styled.span`
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  font-weight: 500;
-`;
-
-const ScheduleToggle = styled.div`
-  margin: 15px 0;
-  display: flex;
-  align-items: center;
-
-  label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
-
-  input {
-    margin-right: 8px;
-  }
-`;
-
-const ScheduleContainer = styled.div`
-  margin: 15px 0;
-  padding: 15px;
-  background-color: var(--gray-surface);
-  border-radius: 8px;
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-
-  input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background-color: var(--bg-color-card);
-    color: rgb(var(--body-text));
-  }
-`;
-
-const QuickTimeOptions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-`;
-
-const QuickTimeButton = styled.button`
-  padding: 6px 12px;
-  background-color: var(--accent-3);
-  color: rgb(var(--body-text));
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--accent-5);
-  }
-`;
-
-const SuccessMessage = styled.div`
-  padding: 15px;
-  background-color: #e6f7e6;
-  color: #2e7d32;
-  border-radius: 4px;
-  text-align: center;
-  font-weight: 500;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 0.5rem;
 `;
 
 export default Pages; 

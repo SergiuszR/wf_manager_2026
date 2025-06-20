@@ -91,6 +91,8 @@ export const ModalBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  max-height: 70vh;
+  overflow-y: auto;
 `;
 
 // Create a component for modal footer
