@@ -21,6 +21,7 @@ import {
 } from './ui/WebflowStyledComponents';
 import { webflowAPI } from '../api/apiClient';
 import { recordActivity } from '../services/activityLogService';
+import { PremiumUpgradeModal } from './PremiumUpgradeModal';
 
 interface NavItemProps {
   $active?: boolean;
@@ -68,6 +69,11 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
 
   // Extend the User type locally to include webflowToken
   const user = rawUser as UserWithWebflowToken | null;
+  
+  // Premium upgrade modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
   // Fetch sites for the publish modal and scheduled indicators and set up periodic check for expirations
   useEffect(() => {
@@ -100,6 +106,43 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleUpgrade = async () => {
+    if (!token) {
+      setUpgradeError('Authentication required');
+      return;
+    }
+
+    setUpgradeLoading(true);
+    setUpgradeError(null);
+
+    try {
+      const response = await fetch('/api/auth/upgrade-premium', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upgrade failed');
+      }
+
+      // Redirect to Stripe checkout
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      
+    } catch (error: any) {
+      setUpgradeError(error.message || 'Failed to create checkout session');
+      setUpgradeLoading(false);
+    }
   };
 
   const isActive = (path: string) => {
@@ -941,6 +984,12 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
           )}
         </Nav>
         <UserSection>
+          {user && !user.user_metadata?.premium && (
+            <UpgradeButton onClick={() => setShowUpgradeModal(true)}>
+              <UpgradeIcon>✨</UpgradeIcon>
+              <UpgradeText>Upgrade to Premium</UpgradeText>
+            </UpgradeButton>
+          )}
           {user && (
             <LogoutButton onClick={handleLogout}>
               <LogoutIcon>👋</LogoutIcon>
@@ -956,6 +1005,45 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         {children}
       </MainContent>
       {renderPublishModal()}
+      
+      <PremiumUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => {
+          setShowUpgradeModal(false);
+          setUpgradeError(null);
+        }}
+        onUpgrade={handleUpgrade}
+        loading={upgradeLoading}
+      />
+      
+      {upgradeError && (
+        <div style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          background: 'var(--error-color)',
+          color: 'white',
+          padding: '1rem',
+          borderRadius: '8px',
+          zIndex: 1001,
+          maxWidth: '300px'
+        }}>
+          {upgradeError}
+          <button 
+            onClick={() => setUpgradeError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              marginLeft: '1rem',
+              cursor: 'pointer'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      
       {toast && (
         <ToastContainer $type={toast.type}>
           {toast.type === 'success' ? '✅' : '❌'} {toast.message}
@@ -1104,6 +1192,40 @@ const LogoutIcon = styled.span`
 
 const LogoutText = styled.span`
   font-weight: 500;
+`;
+
+const UpgradeButton = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+  
+  &:hover {
+    background: linear-gradient(135deg, #ffed4e, #ff8f00);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 165, 0, 0.4);
+  }
+`;
+
+const UpgradeIcon = styled.span`
+  font-size: 1.2rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+`;
+
+const UpgradeText = styled.span`
+  font-weight: 600;
+  font-size: 0.9rem;
 `;
 
 const MainContent = styled.main`

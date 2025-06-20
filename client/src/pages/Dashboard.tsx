@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { PremiumUpgradeModal } from '../components/PremiumUpgradeModal';
 import { FiStar, FiStar as StarIcon, FiSearch, FiPlus, FiX, FiUsers, FiFolder, FiActivity, FiTrendingUp, FiEdit3, FiDatabase, FiImage, FiSettings } from 'react-icons/fi';
 import { 
   TopBar, AddButton, SearchBar, SearchInput, SortSelect, ModalOverlay, ModalContent, ModalHeader, ModalTitle, CloseButton, StarButton, ModalBody 
@@ -558,7 +559,7 @@ const UpgradePrompt = styled.div`
 `;
 
 const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, token: authToken } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState('');
   const [token, setToken] = useState('');
@@ -581,6 +582,11 @@ const Dashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'favorite' | 'name' | 'created_at'>('favorite');
   const [favorites, setFavorites] = useState<{ [id: string]: boolean }>({});
   const [revealedTokenId, setRevealedTokenId] = useState<string | null>(null);
+  
+  // Premium upgrade modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
 
   // Filter and sort projects
   const filteredProjects = projects
@@ -636,6 +642,35 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => { fetchProjects(); }, [user]);
+
+  // Check for upgrade success on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    
+    if (urlParams.get('upgrade') === 'success' && sessionId) {
+      // Check payment status and upgrade user
+      fetch(`/api/auth/upgrade-premium?session_id=${sessionId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('🎉 Welcome to Premium! Your account has been upgraded successfully.');
+            window.location.replace('/dashboard'); // Remove query params and refresh
+          } else {
+            setUpgradeError('Payment verification failed. Please contact support.');
+            window.history.replaceState({}, '', '/dashboard');
+          }
+        })
+        .catch(err => {
+          setUpgradeError('Failed to verify payment. Please contact support.');
+          window.history.replaceState({}, '', '/dashboard');
+        });
+    } else if (urlParams.get('upgrade') === 'cancelled') {
+      // Clean up URL and show message
+      window.history.replaceState({}, '', '/dashboard');
+      setUpgradeError('Payment was cancelled. You can try again anytime.');
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -774,6 +809,43 @@ const Dashboard: React.FC = () => {
     });
   };
 
+  const handleUpgrade = async () => {
+    if (!authToken) {
+      setUpgradeError('Authentication required');
+      return;
+    }
+
+    setUpgradeLoading(true);
+    setUpgradeError(null);
+
+    try {
+      const response = await fetch('/api/auth/upgrade-premium', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upgrade failed');
+      }
+
+      // Redirect to Stripe checkout
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      
+    } catch (error: any) {
+      setUpgradeError(error.message || 'Failed to create checkout session');
+      setUpgradeLoading(false);
+    }
+  };
+
   return (
     <DashboardContainer>
       {/* Hero Section */}
@@ -786,7 +858,7 @@ const Dashboard: React.FC = () => {
           <WelcomeSubtitle>
             Ready to manage your Webflow projects? Access your CMS, publish sites, and organize your content all in one place.
             {!user?.user_metadata?.premium && (
-              <UpgradePrompt>
+              <UpgradePrompt onClick={() => setShowUpgradeModal(true)} style={{ cursor: 'pointer' }}>
                 <span>💎</span>
                 Upgrade to Premium for advanced features like Asset Management and Activity Logs!
               </UpgradePrompt>
@@ -1020,6 +1092,44 @@ const Dashboard: React.FC = () => {
             </ModalBody>
           </ModalContent>
         </ModalOverlay>
+      )}
+
+      <PremiumUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => {
+          setShowUpgradeModal(false);
+          setUpgradeError(null);
+        }}
+        onUpgrade={handleUpgrade}
+        loading={upgradeLoading}
+      />
+      
+      {upgradeError && (
+        <div style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          background: 'var(--error-color)',
+          color: 'white',
+          padding: '1rem',
+          borderRadius: '8px',
+          zIndex: 1001,
+          maxWidth: '300px'
+        }}>
+          {upgradeError}
+          <button 
+            onClick={() => setUpgradeError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              marginLeft: '1rem',
+              cursor: 'pointer'
+            }}
+          >
+            ×
+          </button>
+        </div>
       )}
     </DashboardContainer>
   );
