@@ -368,14 +368,12 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
                 
                 <ModernScheduleToggle>
                   <ModernToggleLabel>
-                    <ModernToggleSwitch>
-                      <input
-                        type="checkbox"
-                        checked={publishState.isScheduling}
-                        onChange={toggleScheduling}
-                      />
-                      <ModernSlider />
-                    </ModernToggleSwitch>
+                    <input
+                      type="checkbox"
+                      checked={publishState.isScheduling}
+                      onChange={toggleScheduling}
+                    />
+                    <ModernSlider />
                     <ModernToggleText>Schedule for later</ModernToggleText>
                   </ModernToggleLabel>
                 </ModernScheduleToggle>
@@ -919,20 +917,26 @@ const Layout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
               <ScheduledPublishesTitle $hasScheduledPublishes={true}>
                 Scheduled Publishes ({Object.keys(publishState.scheduledPublishes).length})
               </ScheduledPublishesTitle>
-              {Object.entries(publishState.scheduledPublishes).map(([siteId, scheduledTime]) => {
-                const siteName = publishState.sites.find(s => s.id === siteId)?.name || siteId;
-                return (
-                  <ScheduledPublishItem key={siteId}>
-                    <ScheduledPublishInfo>
-                      <span>{siteName}</span>
-                      <span>{formatScheduledTime(scheduledTime)}</span>
-                    </ScheduledPublishInfo>
-                    <CancelScheduleButton onClick={() => cancelScheduledPublish(siteId)}>
-                      ×
-                    </CancelScheduleButton>
-                  </ScheduledPublishItem>
-                );
-              })}
+              <ScheduledPublishList>
+                {Object.entries(publishState.scheduledPublishes).map(([siteId, scheduledTime]) => {
+                  const siteName = publishState.sites.find(s => s.id === siteId)?.name || siteId;
+                  return (
+                    <ScheduledPublishItem key={siteId}>
+                      <ScheduledPublishInfo>
+                        <ScheduledPublishSiteId>
+                          {siteName}
+                        </ScheduledPublishSiteId>
+                        <ScheduledPublishTime>
+                          {formatScheduledTime(scheduledTime)}
+                        </ScheduledPublishTime>
+                      </ScheduledPublishInfo>
+                      <CancelScheduleButton onClick={() => cancelScheduledPublish(siteId)}>
+                        ×
+                      </CancelScheduleButton>
+                    </ScheduledPublishItem>
+                  );
+                })}
+              </ScheduledPublishList>
             </ScheduledPublishesContainer>
           )}
         </Nav>
@@ -1315,135 +1319,425 @@ const ErrorMessage = styled.div`
   margin-top: 15px;
 `;
 
-// New styled components for scheduled publishes
+// Modern styled components for scheduled publishes
 interface ScheduledPublishesProps {
   $hasScheduledPublishes: boolean;
 }
 
 const ScheduledPublishesContainer = styled.div<ScheduledPublishesProps>`
-  margin: 1.5rem;
-  padding: 1rem;
-  background-color: var(--background-main);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  min-height: 100px;
-  display: flex;
-  flex-direction: column;
+  margin: 0.75rem;
+  padding: 0;
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.03) 0%, 
+    rgba(168, 85, 247, 0.03) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  backdrop-filter: blur(10px);
   position: relative;
-  z-index: 2;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 100%;
+  
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+  }
   
   &:before {
     content: '';
     position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 16px;
-    height: 16px;
-    background-color: var(--primary-color);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      #6366f1 0%, 
+      #a855f7 50%, 
+      #ec4899 100%);
     opacity: ${props => props.$hasScheduledPublishes ? 1 : 0};
     transition: opacity 0.3s ease;
   }
   
-  @keyframes pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.7);
+  &:after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    opacity: ${props => props.$hasScheduledPublishes ? 1 : 0};
+    animation: ${props => props.$hasScheduledPublishes ? 'pulseGreen 2s infinite' : 'none'};
+  }
+  
+  @keyframes pulseGreen {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
     }
-    70% {
-      box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0);
-    }
-    100% {
-      box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
     }
   }
 `;
 
 const ScheduledPublishesTitle = styled.h3<ScheduledPublishesProps>`
-  font-size: 0.9rem;
-  margin: 0 0 0.75rem 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--primary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0;
+  padding: 0.75rem 0.75rem 0.5rem 0.75rem;
+  color: #374151;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.375rem;
   
-  &:after {
-    content: '';
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: ${props => props.$hasScheduledPublishes ? 'var(--success-color)' : 'transparent'};
-    transition: background-color 0.3s ease;
+  &:before {
+    content: '⏰';
+    font-size: 0.875rem;
   }
+  
+  .dark & {
+    color: #f3f4f6;
+  }
+`;
+
+const ScheduledPublishList = styled.div`
+  padding: 0 0.75rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 `;
 
 const ScheduledPublishItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  border-bottom: 1px dashed var(--border-color);
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  font-size: 0.75rem;
   
-  &:last-child {
-    border-bottom: none;
+  &:hover {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(99, 102, 241, 0.15);
+    transform: translateX(1px);
+  }
+  
+  &:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #6366f1, #a855f7);
+    border-radius: 0 2px 2px 0;
+  }
+  
+  .dark & {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
   }
 `;
 
 const ScheduledPublishInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
+  flex: 1;
+  margin-right: 0.5rem;
+  min-width: 0;
+`;
+
+const ScheduledPublishSiteId = styled.div`
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #1f2937;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   
-  span:first-child {
-    font-weight: 500;
-    color: var(--text-primary);
+  .dark & {
+    color: #f9fafb;
+    background: rgba(99, 102, 241, 0.2);
+  }
+`;
+
+const ScheduledPublishTime = styled.div`
+  font-size: 0.625rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  
+  &:before {
+    content: '📅';
+    font-size: 0.675rem;
   }
   
-  span:last-child {
-    font-size: 0.75rem;
-    opacity: 0.8;
+  .dark & {
+    color: #9ca3af;
   }
 `;
 
 const CancelScheduleButton = styled.button`
-  background: transparent;
-  border: none;
-  color: var(--error-color);
-  font-size: 1.2rem;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0.25rem;
-  line-height: 1;
-  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
   
   &:hover {
-    background-color: rgba(229, 62, 62, 0.1);
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    border-color: #f87171;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  .dark & {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.15));
+    border-color: rgba(220, 38, 38, 0.3);
+    color: #f87171;
+    
+    &:hover {
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.2));
+      border-color: rgba(220, 38, 38, 0.4);
+    }
   }
 `;
 
-// Add styled components for the new UI elements
-const ScheduleSummary = styled.div`
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-  color: var(--text-secondary);
+// Modern styled components for publish modal  
+const ModernModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 `;
 
-const PublishNote = styled.div`
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background-color: rgba(var(--primary-rgb), 0.1);
-  border-radius: var(--border-radius);
+const ModernModalContent = styled.div`
+  background: white;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  .dark & {
+    background: #1f2937;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const ModernModalHeader = styled.div`
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  
+  .dark & {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const ModernModalTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const ModernModalIcon = styled.div`
+  font-size: 1.5rem;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+`;
+
+const ModernModalTitleText = styled.h2`
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  
+  .dark & {
+    color: #f9fafb;
+  }
+`;
+
+const ModernModalSubtitle = styled.p`
+  margin: 0.25rem 0 0 0;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: #6b7280;
+  
+  .dark & {
+    color: #9ca3af;
+  }
 `;
 
-const Spinner = styled.div`
+const ModernCloseButton = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  
+  span {
+    font-size: 1.25rem;
+    color: #6b7280;
+  }
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+  }
+  
+  .dark & {
+    background: rgba(255, 255, 255, 0.1);
+    
+    span {
+      color: #d1d5db;
+    }
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+`;
+
+const ModernModalBody = styled.div`
+  padding: 0 1.5rem 1rem 1.5rem;
+`;
+
+const ModernModalFooter = styled.div`
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  
+  .dark & {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const ModernButton = styled.button<{ variant: 'primary' | 'secondary' }>`
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  justify-content: center;
+  
+  ${props => props.variant === 'primary' ? `
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: white;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+    
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  ` : `
+    background: rgba(0, 0, 0, 0.05);
+    color: #374151;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark & {
+      background: rgba(255, 255, 255, 0.1);
+      color: #d1d5db;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+    }
+  `}
+`;
+
+const ModernSpinner = styled.div`
   width: 1rem;
   height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -1458,56 +1752,104 @@ const Spinner = styled.div`
   }
 `;
 
-// Add these styled components
-const FormGroup = styled.div`
-  margin-bottom: 1rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background-color: var(--background-secondary);
-  color: var(--text-primary);
-`;
-
-const DateTimeInput = styled.input`
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background-color: var(--background-secondary);
-  color: var(--text-primary);
-`;
-
-const QuickOptions = styled.div`
-  margin-top: 1rem;
-`;
-
-const QuickOptionsButtons = styled.div`
+const ModernSuccessMessage = styled.div`
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-radius: 16px;
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  
+  .success-icon {
+    font-size: 1.5rem;
+  }
+  
+  .success-text {
+    color: #065f46;
+    font-weight: 500;
+  }
+  
+  .dark & {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+    
+    .success-text {
+      color: #6ee7b7;
+    }
+  }
 `;
 
-const QuickButton = styled.button`
-  padding: 0.5rem;
-  background-color: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  cursor: pointer;
+const ModernErrorMessage = styled.div`
+  padding: 1rem;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
   
-  &:hover {
-    background-color: var(--background-hover);
+  .error-icon {
+    font-size: 1.25rem;
+    margin-top: 0.125rem;
+  }
+  
+  strong {
+    color: #dc2626;
+  }
+  
+  p {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.875rem;
+    color: #7f1d1d;
+  }
+  
+  .dark & {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(220, 38, 38, 0.1));
+    
+    strong {
+      color: #f87171;
+    }
+    
+    p {
+      color: #fca5a5;
+    }
+  }
+`;
+
+const ModernScheduleToggle = styled.div`
+  margin: 1.5rem 0;
+`;
+
+const ModernToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  position: relative;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+`;
+
+
+
+// Additional old styled components for compatibility
+const Spinner = styled.div`
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-radius: 50%;
+  border-top-color: #6366f1;
+  animation: spin 1s linear infinite;
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -1572,199 +1914,17 @@ const DisabledNavItem = styled.span`
   font-weight: 500;
 `;
 
-// Modern Modal Components
-const ModernModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-`;
 
-const ModernModalContent = styled.div`
-  background: var(--background-light);
-  border-radius: 20px;
-  min-width: 500px;
-  max-width: 600px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  @keyframes slideIn {
-    from { 
-      opacity: 0; 
-      transform: translateY(20px) scale(0.95); 
-    }
-    to { 
-      opacity: 1; 
-      transform: translateY(0) scale(1); 
-    }
-  }
-`;
-
-const ModernModalHeader = styled.div`
-  padding: 2rem;
-  background: linear-gradient(135deg, var(--background-light), var(--background-main));
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-`;
-
-const ModernModalTitle = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-`;
-
-const ModernModalIcon = styled.div`
-  font-size: 2rem;
-  background: linear-gradient(135deg, var(--primary-color), #6366f1);
-  padding: 0.75rem;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-`;
-
-const ModernModalTitleText = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 0.25rem 0;
-  color: var(--text-primary);
-  line-height: 1.2;
-`;
-
-const ModernModalSubtitle = styled.p`
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.4;
-`;
-
-const ModernCloseButton = styled.button`
-  background: var(--background-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: var(--error-color);
-    color: white;
-    border-color: var(--error-color);
-    transform: scale(1.05);
-  }
-  
-  span {
-    font-size: 1.2rem;
-    font-weight: 400;
-  }
-`;
-
-const ModernModalBody = styled.div`
-  padding: 2rem;
-`;
-
-const ModernModalFooter = styled.div`
-  padding: 1.5rem 2rem;
-  background: var(--background-main);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-`;
-
-const ModernSuccessMessage = styled.div`
-  padding: 2rem;
-  text-align: center;
-  
-  .success-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-  
-  .success-text {
-    font-size: 1.1rem;
-    color: var(--success-color);
-    font-weight: 600;
-  }
-`;
-
-const ModernErrorMessage = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.2);
-  border-radius: 12px;
-  margin-bottom: 1.5rem;
-  
-  .error-icon {
-    font-size: 1.2rem;
-    flex-shrink: 0;
-  }
-  
-  strong {
-    color: var(--error-color);
-  }
-`;
-
-const ModernScheduleToggle = styled.div`
-  margin: 1.5rem 0;
-`;
-
-const ModernToggleLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-`;
-
-const ModernToggleSwitch = styled.div`
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 28px;
-  
-  input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-`;
 
 const ModernSlider = styled.span`
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  background-color: #e5e7eb;
   border-radius: 28px;
-  transition: 0.3s;
+  transition: all 0.3s ease;
+  cursor: pointer;
   
   &:before {
     position: absolute;
@@ -1772,19 +1932,27 @@ const ModernSlider = styled.span`
     height: 22px;
     width: 22px;
     left: 3px;
-    bottom: 3px;
+    top: 3px;
     background-color: white;
     border-radius: 50%;
-    transition: 0.3s;
+    transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   input:checked + & {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, #6366f1, #a855f7);
   }
   
   input:checked + &:before {
-    transform: translateX(22px);
+    transform: translateX(20px);
+  }
+  
+  .dark & {
+    background-color: #4b5563;
+    
+    &:before {
+      background-color: #f9fafb;
+    }
   }
 `;
 
@@ -1882,61 +2050,7 @@ const ModernPublishNote = styled.div`
   line-height: 1.5;
 `;
 
-const ModernButton = styled.button<{ variant: 'primary' | 'secondary'; disabled?: boolean }>`
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  
-  ${props => props.variant === 'primary' ? `
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-    
-    &:hover:not(:disabled) {
-      background: var(--primary-hover);
-      border-color: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-  ` : `
-    background: var(--background-light);
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-    
-    &:hover:not(:disabled) {
-      background: var(--background-main);
-      color: var(--text-primary);
-      border-color: var(--text-secondary);
-    }
-  `}
-  
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
 
-const ModernSpinner = styled.div`
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
-  
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-`;
 
 // Add styled ToastContainer
 const ToastContainer = styled.div<{ $type: 'success' | 'error' }>`

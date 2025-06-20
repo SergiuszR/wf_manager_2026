@@ -149,6 +149,108 @@ async function getSiteAssetsCSV(req: VercelRequest, res: VercelResponse, siteId:
   }
 }
 
+async function publishSite(req: VercelRequest, res: VercelResponse, webflowToken: string) {
+  try {
+    const { siteId, scheduledTime } = req.body;
+    
+    if (!siteId || typeof siteId !== 'string') {
+      res.status(400).json({ message: 'Site ID is required' });
+      return;
+    }
+    
+    const client = axios.create({
+      baseURL: 'https://api.webflow.com',
+      headers: {
+        'Authorization': `Bearer ${webflowToken}`,
+        'Accept-Version': '2.0.0',
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // Helper function with retry logic for rate limiting
+    const makeRequestWithRetry = async (requestFn: () => Promise<any>, retryCount = 0): Promise<any> => {
+      try {
+        return await requestFn();
+      } catch (error: any) {
+        if (error.response?.status === 429 && retryCount < 3) {
+          const delayMs = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          console.log(`[SITES-GROUP] Rate limited, retrying in ${delayMs}ms (attempt ${retryCount + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          return makeRequestWithRetry(requestFn, retryCount + 1);
+        }
+        throw error;
+      }
+    };
+    
+    // Get custom domains using the dedicated endpoint
+    console.log(`[SITES-GROUP] Fetching custom domains for site ${siteId}`);
+    let customDomainIds: string[] = [];
+    
+    try {
+      const customDomainsResponse = await makeRequestWithRetry(() => 
+        client.get(`/v2/sites/${siteId}/custom_domains`)
+      );
+      const customDomains = customDomainsResponse.data.customDomains || [];
+      customDomainIds = customDomains.map((domain: any) => domain.id).filter(Boolean);
+      console.log(`[SITES-GROUP] Found ${customDomainIds.length} custom domains:`, customDomainIds);
+    } catch (error: any) {
+      console.log(`[SITES-GROUP] Could not fetch custom domains:`, error.response?.data || error.message);
+      // Continue without custom domains
+    }
+    
+    // Prepare request body for publishing according to v2 API
+    const publishBody: any = {
+      customDomains: customDomainIds, // Use custom domain IDs if available
+      publishToWebflowSubdomain: customDomainIds.length === 0 // Publish to webflow.io if no custom domains
+    };
+    
+    if (scheduledTime) {
+      try {
+        const date = new Date(scheduledTime);
+        publishBody.scheduledTime = date.toISOString();
+      } catch (e) {
+        res.status(400).json({ message: 'Invalid scheduled time format' });
+        return;
+      }
+    }
+    
+    console.log(`[SITES-GROUP] Publishing site ${siteId} with body:`, publishBody);
+    
+    // Publish the site using v2 API with retry logic
+    const response = await makeRequestWithRetry(() => 
+      client.post(`/v2/sites/${siteId}/publish`, publishBody)
+    );
+    
+    console.log(`[SITES-GROUP] Publish response:`, response.data);
+    res.status(200).json({
+      message: 'Site published successfully',
+      publishDetails: response.data
+    });
+  } catch (error: any) {
+    console.error(`[SITES-GROUP] Error publishing site:`, error.response?.data || error.message);
+    
+    if (error.response) {
+      // Handle specific error cases
+      if (error.response.status === 429) {
+        res.status(429).json({ 
+          message: 'Too many requests. Please wait before trying again. Note: Webflow has a rate limit of 1 publish per minute.',
+          error: error.response.data 
+        });
+      } else {
+        res.status(error.response.status).json({ 
+          message: error.response.data?.message || 'Failed to publish site',
+          error: error.response.data 
+        });
+      }
+    } else {
+      res.status(500).json({ 
+        message: 'Failed to publish site', 
+        error: error.message 
+      });
+    }
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`[SITES-GROUP] ${req.method} ${req.url}`);
   
@@ -172,6 +274,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!webflowToken) {
       console.log(`[SITES-GROUP] No webflow token found`);
       res.status(401).json({ message: 'No Webflow token found' });
+      return;
+    }
+
+    // /api/webflow/sites/publish
+    if (path.endsWith('/sites/publish')) {
+      console.log(`[SITES-GROUP] Publish site request, Method:`, req.method);
+      if (req.method === 'POST') {
+        return publishSite(req, res, webflowToken);
+      }
+      res.status(405).json({ message: 'Method Not Allowed' });
       return;
     }
 
